@@ -4,10 +4,12 @@
 
 # DREAM-RSI: Recursive Self-Improvement Engine
 
-### Offline Monte Carlo Replay & Search Policy Optimization MCP Server for AI Agents
+### Self-improving search policy optimization across discovery trees for AI agents.
 
-**Simulate historical discovery trees. Optimize search policies offline with zero token expenditure.**
+**Record exploration attempts. Replay trajectories offline. Optimize search policy allocations.**
 
+[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
 [![MCP Protocol](https://img.shields.io/badge/MCP-8_tools_%7C_2_resources-5c4ee5?style=flat-square)](docs/mcp-contracts.md)
 [![Type Checked](https://img.shields.io/badge/types-pyright_strict-blue?style=flat-square)](pyrightconfig.json)
@@ -15,7 +17,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
 
-[Quick start](#quick-start) · [How DREAM-RSI works](#how-dream-rsi-works) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Development & Verification](#development--verification) · [Citation](#citation)
+[Quick start](#quick-start) · [How DREAM-RSI works](#how-dream-rsi-works) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Architecture & Safety](#architecture-and-safety-invariants) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
 
 <code>uv run dream-rsi</code>
 
@@ -25,24 +27,24 @@
 
 ---
 
-**DREAM-RSI** is an independent, cleanroom Python implementation of the *Dreaming While Exploring* recursive self-improvement framework (arXiv: 2609.14858). It exposes self-improving search policy optimization as a standard Model Context Protocol (MCP) server over standard input and output (STDIO).
+**DREAM-RSI** is a cleanroom Python implementation of the *Dreaming While Exploring* recursive self-improvement framework (arXiv: 2609.14858). It exposes self-improving search policy optimization as a Model Context Protocol (MCP) server over standard input and output (STDIO).
 
-Autonomous AI agents frequently explore high-dimensional code, mathematical, or scientific search spaces. Standard exploration strategies either waste compute by re-evaluating poor hypotheses or exhaust token budgets querying LLMs for meta-planning. DREAM-RSI decouples **online discovery** from **offline policy refinement**:
+When an autonomous agent explores code synthesis, algorithmic optimization, or mathematical proofs, trial-and-error discovery trees expand rapidly. Uncalibrated search strategies often repeat suboptimal trajectories or fail to balance broad exploration against deep refinement. DREAM-RSI decouples **online discovery** from **offline policy refinement**:
 
-- **Zero Token Overhead**: Historical discovery trees serve as virtual replay environments. Offline policy optimization requires zero LLM API calls and zero external token consumption.
-- **Topological Integrity**: Enforces strict Directed Acyclic Graph (DAG) contracts with cycle detection and atomic JSON persistence.
-- **Dynamic Portfolio Optimization**: Solves the Pareto frontier between broad hypothesis branching ($W$) and deep iterative refinement ($R$).
-- **Deterministic Grid Planning**: Dynamically schedules worker budgets and probe limits based on empirical replay performance.
+- **Offline Simulation Environment**: Historical discovery trees serve as virtual replay environments. Policy optimization operates directly over recorded execution DAGs without external API queries or runtime LLM prompting.
+- **Topological Integrity**: Enforces strict Directed Acyclic Graph (DAG) invariants with cycle detection, node depth indexing, and atomic JSON persistence.
+- **Pareto Frontier Optimization**: Evaluates the empirical trade-off curve between hypothesis exploration breadth and iterative refinement depth across parameter sweeps.
+- **Deterministic Grid Scheduling**: Dynamically computes recommended worker width ($W$) and probe depth ($R$) allocations for subsequent exploration episodes.
 
 ---
 
 ## Quick start
 
-### 1. Agent Configuration
+### 1. Configure Your Agent
 
-DREAM-RSI connects natively to Claude Code, Antigravity, Cursor, and OpenAI Codex via standard STDIO MCP configuration.
+Connect DREAM-RSI to your AI agent environment via standard STDIO MCP configuration.
 
-#### Claude Code (`claude_desktop_config.json` or project MCP config)
+#### Claude Code (`claude_desktop_config.json` or project MCP settings)
 
 ```json
 {
@@ -71,6 +73,19 @@ DREAM-RSI connects natively to Claude Code, Antigravity, Cursor, and OpenAI Code
 }
 ```
 
+#### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+    }
+  }
+}
+```
+
 #### OpenAI Codex (`config.toml`)
 
 ```toml
@@ -79,7 +94,15 @@ command = "uv"
 args = ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
 ```
 
-### 2. Standalone Terminal Execution
+### 2. Ask Your Agent
+
+During or after an exploratory task, ask your agent to inspect, replay, and optimize:
+
+```text
+Record our current exploration tree with dream_history_save_node, run an offline replay across beta values, and compute the Pareto frontier to schedule the worker grid for the next iteration.
+```
+
+### 3. Standalone Terminal Execution
 
 Run the MCP server directly via `uv`:
 
@@ -87,7 +110,7 @@ Run the MCP server directly via `uv`:
 uv run dream-rsi
 ```
 
-All diagnostic output is routed strictly to standard error (stderr) to preserve JSON-RPC transport integrity across STDIO.
+Diagnostic logs route strictly to standard error (stderr), keeping standard input and output clean for JSON-RPC transport frames.
 
 ---
 
@@ -96,7 +119,7 @@ All diagnostic output is routed strictly to standard error (stderr) to preserve 
 ```
  ┌────────────────────────────────────────────────────────┐
  │                   Online Exploration                   │
- │   Agent attempts code/math hypothesis generation       │
+ │   Agent attempts code, proof, or hypothesis actions    │
  └───────────────────────────┬────────────────────────────┘
                              │
                              ▼  dream_history_save_node
@@ -109,7 +132,7 @@ All diagnostic output is routed strictly to standard error (stderr) to preserve 
  ┌────────────────────────────────────────────────────────┐
  │                 Replay Simulation Engine               │
  │   Simulate execution paths from past discovery trees   │
- │   Zero external tokens, deterministic reward replay    │
+ │   Deterministic reward replay over historical graphs   │
  └───────────────────────────┬────────────────────────────┘
                              │
                              ▼  dream_replay_get_frontier
@@ -127,14 +150,14 @@ All diagnostic output is routed strictly to standard error (stderr) to preserve 
 
 1. **Online Recording**: During interactive reasoning sessions, the host agent records attempts using `dream_history_save_node`. Each node captures execution state, verification status, and error taxonomy.
 2. **Offline Replay**: When the session pauses or completes, the agent invokes `dream_replay_run`. The simulator reconstructs past decision trajectories and replays them under varied $\beta$ exploitation parameters.
-3. **Pareto Frontier Discovery**: The optimizer computes the trade-off curve across all historical trees using `dream_replay_get_frontier`.
+3. **Pareto Frontier Discovery**: The optimizer computes the multi-objective trade-off curve across recorded trees using `dream_replay_get_frontier`.
 4. **Adaptive Allocation**: The agent queries `dream_policy_plan_grid` to receive mathematical recommendations for branch width ($W$) and refinement depth ($R$) on subsequent exploration tasks.
 
 ---
 
 ## MCP Tools
 
-DREAM-RSI registers 8 MCP tools and 2 MCP resources:
+DREAM-RSI provides 8 MCP tools and 2 MCP resources:
 
 | Tool | Purpose | Key Parameters | Return Value |
 | :--- | :--- | :--- | :--- |
@@ -175,10 +198,10 @@ $$W \cdot R \le B, \quad \max_{W, R} \mathbb{E}\left[\max_{i \le W} S_i^{(R)}\ri
 
 ## Architecture and Safety Invariants
 
-- **Offline Boundary**: Zero outgoing network requests or telemetry. Storage operations are confined strictly to the configured directory (`DREAM_RSI_STORE_DIR`).
-- **Path Confinement**: Directory traversal patterns (`../`) are detected and rejected with explicit exceptions.
-- **Atomic Persistence**: Discovery tree mutations use atomic filesystem writes to guarantee durability against unexpected crashes.
-- **Strict Typing**: Type checking operates under Pyright strict mode without `Any` overrides.
+- **Offline Boundary**: Operates entirely offline with zero outgoing network requests or telemetry. Storage operations are confined strictly to the configured directory (`DREAM_RSI_STORE_DIR`).
+- **Path Traversal Containment**: Directory traversal attempts (`../`) are sanitized and rejected with explicit containment errors.
+- **Atomic Persistence**: Discovery tree mutations use atomic write patterns (`write to temp + atomic replace`) to ensure durability against unexpected interruptions.
+- **Strict Typing**: Codebase adheres to Pyright strict mode without `Any` overrides or dynamic escaping.
 
 ---
 
@@ -192,25 +215,19 @@ DREAM-RSI uses `uv` and Python 3.10+.
 uv sync
 ```
 
-### Run Tests
-
-Execute the test suite covering unit models, evaluator math, and integration loops:
-
-```bash
-uv run pytest
-```
-
 ### Static Type Analysis
-
-Execute strict static typing analysis:
 
 ```bash
 uv run pyright
 ```
 
-### Live MCP Protocol Handshake Verification
+### Test Suite Execution
 
-Verify STDIO JSON-RPC handshake, schema enumeration, and live execution across all 8 tools:
+```bash
+uv run pytest
+```
+
+### Live STDIO Protocol Verification
 
 ```bash
 uv run python scripts/verify_mcp.py
@@ -218,9 +235,37 @@ uv run python scripts/verify_mcp.py
 
 ---
 
+## FAQ
+
+<details>
+<summary><strong>Which agents can use DREAM-RSI?</strong></summary>
+
+Any agent supporting the Model Context Protocol (MCP) over STDIO. This includes Claude Code, Google Antigravity, Cursor, OpenAI Codex, and custom MCP clients.
+</details>
+
+<details>
+<summary><strong>Does offline replay require external LLM calls or network access?</strong></summary>
+
+No. Offline replay uses historical execution graphs and deterministic verification oracles recorded during online sessions. It evaluates policy choices mathematically without external network requests or language model inference.
+</details>
+
+<details>
+<summary><strong>How are exploration trees stored?</strong></summary>
+
+Discovery trees are serialized as Directed Acyclic Graphs in local JSON files under `DREAM_RSI_STORE_DIR` (or `data/trees/`). Writes are atomic, preventing partial file corruption.
+</details>
+
+<details>
+<summary><strong>What do W and R represent in grid planning?</strong></summary>
+
+$W$ represents the number of parallel exploration workers or hypothesis branches, while $R$ represents the refinement depth or iteration budget per branch. The grid planner optimizes this trade-off under a total budget $B$.
+</details>
+
+---
+
 ## Citation
 
-If you use DREAM-RSI in your research or autonomous agent workflows, please cite the foundational research paper:
+If you reference DREAM-RSI in your research or agent workflows, please cite the foundational paper:
 
 ```bibtex
 @article{zheng2026dreamrsi,
