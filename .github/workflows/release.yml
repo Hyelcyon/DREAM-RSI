@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g. v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  gate:
+    name: Release Verification Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Verify static types
+        run: uv run pyright
+
+      - name: Run test suite
+        run: uv run pytest
+
+      - name: Verify STDIO MCP protocol
+        run: uv run python scripts/verify_mcp.py
+
+  publish-github-release:
+    name: Publish GitHub Release
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Determine tag name
+        id: tag_info
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create or update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: "dream-rsi: ${{ steps.tag_info.outputs.tag }}"
+          generate_release_notes: true
+
+  publish-pypi:
+    name: Optional PyPI Publication
+    needs: [gate, publish-github-release]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Build distribution package
+        run: uv build
+
+      - name: Publish to PyPI
+        if: env.PYPI_TOKEN != ''
+        env:
+          PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        run: uv publish --token "$PYPI_TOKEN"
