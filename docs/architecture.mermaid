@@ -1,0 +1,43 @@
+flowchart TD
+    subgraph AgentHost["Agent Host (Claude / Antigravity / Codex)"]
+        Agent["Autonomous Agent Loop"]
+        MCPClient["MCP STDIO Client"]
+    end
+
+    subgraph DREAM_RSI["DREAM-RSI Engine"]
+        subgraph MCPAdapter["MCP Server Adapter (src/dream_rsi/mcp/)"]
+            STDIO["STDIO Transport (JSON-RPC)"]
+            ToolRouter["Tool & Resource Router (8 Tools, 2 Resources)"]
+        end
+
+        subgraph CoreDomain["Core Domain & Storage (src/dream_rsi/core/ & storage/)"]
+            Models["DiscoveryTree & TreeNode (DAG Invariants)"]
+            Store["JsonFileHistoryStore (Atomic JSON Persistence)"]
+            Evaluator["TreeEvaluator & Oracle Contracts"]
+        end
+
+        subgraph ReplayEngine["Replay Simulation (src/dream_rsi/replay/)"]
+            Simulator["ReplaySimulator (Offline Virtual Environment)"]
+            QuestionState["QuestionPrefix & Node Expansion"]
+        end
+
+        subgraph OptimizerEngine["Policy Optimization (src/dream_rsi/optimizer/)"]
+            Policy["DynamicPortfolioPolicy (Beta Exploitation)"]
+            Optimizer["PolicyOptimizer (Pareto Frontier & Comparison)"]
+        end
+    end
+
+    Agent -->|"Generates Hypotheses"| MCPClient
+    MCPClient <-->|"JSON-RPC via STDIO"| STDIO
+    STDIO <--> ToolRouter
+
+    ToolRouter -->|"dream_history_save_node"| Store
+    ToolRouter -->|"dream_replay_run"| Simulator
+    ToolRouter -->|"dream_replay_get_frontier"| Optimizer
+    ToolRouter -->|"dream_policy_plan_grid"| Policy
+
+    Store <-->|"Validates Invariants"| Models
+    Simulator -->|"Loads Past Trees"| Store
+    Simulator -->|"Simulates Actions"| QuestionState
+    Optimizer -->|"Evaluates Episodes"| Simulator
+    Optimizer -->|"Pareto Curves"| Evaluator
