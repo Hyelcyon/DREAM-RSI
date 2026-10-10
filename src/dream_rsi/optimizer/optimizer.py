@@ -44,6 +44,13 @@ class OptimalSelectionResult(BaseModel):
     improvement: float
 
 
+class CrossCycleBetaResult(BaseModel):
+    recommended_beta: float
+    prior_beta: float
+    reason: str
+    is_adjusted: bool
+
+
 class PolicyOptimizer:
     def __init__(
         self,
@@ -167,3 +174,57 @@ class PolicyOptimizer:
             improvement=best_eval.mean_replay_score - base_eval.mean_replay_score,
         )
         return best_policy, comparison
+
+    def select_cross_cycle_beta(
+        self,
+        history_scores: list[float],
+        current_beta: float,
+        sweep_frontier: list[FrontierPoint],
+    ) -> CrossCycleBetaResult:
+        """Applies cross-cycle default beta adaptation rule from paper Listing 2."""
+        curr_b = min(1.0, max(0.0, float(current_beta)))
+        if len(history_scores) < 2 or not sweep_frontier:
+            default_b = 0.6 if not history_scores else curr_b
+            return CrossCycleBetaResult(
+                recommended_beta=default_b,
+                prior_beta=curr_b,
+                reason="History is insufficient or empty: adopting exploratory default beta=0.6.",
+                is_adjusted=(default_b != curr_b),
+            )
+
+        best_sweep = max(sweep_frontier, key=lambda p: (p.mean_pareto_reward, p.mean_replay_score))
+        score_diff = history_scores[-1] - history_scores[-2]
+
+        if score_diff > 1e-4:
+            return CrossCycleBetaResult(
+                recommended_beta=curr_b,
+                prior_beta=curr_b,
+                reason="Live best score is still actively improving: retaining current default beta.",
+                is_adjusted=False,
+            )
+
+        if best_sweep.beta > curr_b and best_sweep.mean_pareto_reward > 0.0:
+            new_b = min(1.0, round(curr_b + 0.15, 2))
+            return CrossCycleBetaResult(
+                recommended_beta=new_b,
+                prior_beta=curr_b,
+                reason="Live best plateaued and sweep demonstrates higher attainment: raising beta by +0.15.",
+                is_adjusted=True,
+            )
+
+        if best_sweep.beta < curr_b:
+            new_b = max(0.0, round(curr_b - 0.15, 2))
+            return CrossCycleBetaResult(
+                recommended_beta=new_b,
+                prior_beta=curr_b,
+                reason="High beta adds work without higher attainment: lowering beta by -0.15.",
+                is_adjusted=True,
+            )
+
+        return CrossCycleBetaResult(
+            recommended_beta=curr_b,
+            prior_beta=curr_b,
+            reason="Live best plateaued and sweep confirms current beta is balanced.",
+            is_adjusted=False,
+        )
+

@@ -49,6 +49,9 @@ async def run_verification() -> bool:
                 "dream_policy_compare",
                 "dream_policy_plan_grid",
                 "dream_status",
+                "dream_policy_select_beta",
+                "dream_benchmark_evaluate",
+                "dream_benchmark_create_tree",
             ]
             for exp in expected_tools:
                 assert exp in tool_names, f"Missing expected tool: {exp}"
@@ -147,7 +150,31 @@ async def run_verification() -> bool:
             assert p["branch_count"] >= 1
             assert p["refine_count"] >= 0
 
-            print("[5/5] All 8 tools verified successfully over live STDIO protocol!")
+            res_beta = await session.call_tool(
+                "dream_policy_select_beta",
+                {"history_scores": [0.5, 0.7, 0.7], "current_beta": 0.6},
+            )
+            beta_data = json.loads(_extract_text(res_beta))
+            print(f"       -> dream_policy_select_beta: recommended={beta_data['result']['recommended_beta']}")
+            assert "recommended_beta" in beta_data["result"]
+
+            res_bench = await session.call_tool(
+                "dream_benchmark_evaluate",
+                {"problem": "sum_difference", "payload": {"elements": [0, 2, 3, 4, 7, 11, 12, 14]}},
+            )
+            bench_data = json.loads(_extract_text(res_bench))
+            print(f"       -> dream_benchmark_evaluate (sum_diff): gamma={bench_data['result']['gamma_score']:.4f}")
+            assert bench_data["result"]["is_valid"] is True
+
+            res_create = await session.call_tool(
+                "dream_benchmark_create_tree",
+                {"problem": "circle_packing", "tree_id": "v_circle_tree", "num_branches": 2, "depth_per_branch": 2},
+            )
+            create_data = json.loads(_extract_text(res_create))
+            print(f"       -> dream_benchmark_create_tree: nodes={create_data['total_nodes']}")
+            assert create_data["status"] == "success"
+
+            print(f"[5/5] All {len(expected_tools)} tools verified successfully over live STDIO protocol!")
             return True
 
 

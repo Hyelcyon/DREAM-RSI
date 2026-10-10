@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import math
-from dream_rsi.core.models import DiscoveryTree, TreeNode
+from typing import Callable
+from dream_rsi.core.models import CellMeta, DiscoveryTree, TreeNode
+
 
 class QuestionAPI:
     def __init__(
@@ -17,16 +19,40 @@ class QuestionAPI:
         if tree.root_id not in tree.nodes:
             raise ValueError(f"Root node '{tree.root_id}' missing in tree.")
 
-        root_node = tree.nodes[tree.root_id]
-        self._observed: dict[str, TreeNode] = {tree.root_id: root_node.model_copy(deep=True)}
-        self._revealed_node_ids: list[str] = [tree.root_id]
+        self._children_by_parent: dict[str, list[str]] = {}
+        for nid, node in tree.nodes.items():
+            pid = node.parent_id
+            if pid is not None:
+                if pid not in self._children_by_parent:
+                    self._children_by_parent[pid] = []
+                self._children_by_parent[pid].append(nid)
+
+        for child_list in self._children_by_parent.values():
+            child_list.sort(key=lambda x: (tree.nodes[x].created_at, tree.nodes[x].attempt_index))
+
+        self._baseline_score: float = float(tree.metadata.get("baseline_score", 0.0))
+        self._observed: dict[str, TreeNode] = {}
+        self._revealed_node_ids: list[str] = []
         self._probes_spent: int = 0
         self._rounds_spent: int = 0
         self._effective_sequential_rounds: float = 0.0
+        self._current_best_score: float = 0.0
+        self._trajectory: list[tuple[int, float]] = []
+
+        self.reset()
+
+    def reset(self) -> None:
+        """Resets the exploration state to the root observation."""
+        root_node = self._tree.nodes[self._tree.root_id]
+        self._observed = {self._tree.root_id: root_node.model_copy(deep=True)}
+        self._revealed_node_ids = [self._tree.root_id]
+        self._probes_spent = 0
+        self._rounds_spent = 0
+        self._effective_sequential_rounds = 0.0
 
         initial_score = root_node.observation.score if root_node.observation.evaluated else 0.0
-        self._current_best_score: float = initial_score
-        self._trajectory: list[tuple[int, float]] = [(0, self._current_best_score)]
+        self._current_best_score = initial_score
+        self._trajectory = [(0, self._current_best_score)]
 
     @property
     def max_parallelism(self) -> int:
@@ -35,6 +61,10 @@ class QuestionAPI:
     @property
     def max_budget(self) -> int:
         return self._max_budget
+
+    @property
+    def baseline_score(self) -> float:
+        return self._baseline_score
 
     @property
     def probes_spent(self) -> int:
@@ -79,6 +109,40 @@ class QuestionAPI:
         leaves = set(self.get_leaves_of_observed())
         return {self._tree.root_id} | leaves
 
+    def legal_actions(self) -> list[str]:
+        """Returns valid continuations that have unrevealed candidate children."""
+        unrevealed = self.get_unrevealed_continuations()
+        return sorted(list(unrevealed))
+
+    def legal_roots(self) -> list[str]:
+        """Returns root continuations if unrevealed branches remain available."""
+        if self._find_unrevealed_children(self._tree.root_id):
+            return [self._tree.root_id]
+        return []
+
+    def opened_branches(self) -> list[int]:
+        """Returns sorted list of distinct branch IDs observed so far."""
+        branches: set[int] = {
+            node.branch_id
+            for node in self._observed.values()
+            if not node.is_root
+        }
+        return sorted(list(branches))
+
+    def meta(self, cell_id: str) -> CellMeta:
+        """Returns metadata structure for a given cell ID."""
+        node = self._tree.nodes.get(cell_id)
+        if node is None:
+            raise KeyError(f"Cell ID '{cell_id}' not found in discovery tree.")
+        return CellMeta(
+            cell_id=node.node_id,
+            branch=node.branch_id,
+            attempt=node.attempt_index,
+            parent_id=node.parent_id,
+            seq=node.depth,
+            tags={"is_root": node.is_root, "depth": node.depth},
+        )
+
     def get_unrevealed_continuations(self) -> set[str]:
         candidates: set[str] = set()
         for cand_id in self.admissible_continuations():
@@ -88,12 +152,8 @@ class QuestionAPI:
         return candidates
 
     def _find_unrevealed_children(self, parent_id: str) -> list[str]:
-        unrevealed: list[str] = []
-        for nid, node in self._tree.nodes.items():
-            if node.parent_id == parent_id and nid not in self._observed:
-                unrevealed.append(nid)
-        unrevealed.sort(key=lambda x: (self._tree.nodes[x].created_at, self._tree.nodes[x].attempt_index))
-        return unrevealed
+        children = self._children_by_parent.get(parent_id, [])
+        return [cid for cid in children if cid not in self._observed]
 
     def _is_ancestor_in_observed(self, ancestor_id: str, descendant_id: str) -> bool:
         current = self._observed.get(descendant_id)
@@ -103,7 +163,11 @@ class QuestionAPI:
             current = self._observed.get(current.parent_id)
         return False
 
-    def probe_batch(self, parent_ids: list[str]) -> list[TreeNode]:
+    def probe_batch(
+        self,
+        parent_ids: list[str],
+        on_reveal: Callable[[TreeNode], None] | None = None,
+    ) -> list[TreeNode]:
         if self.is_exhausted():
             return []
 
@@ -155,6 +219,9 @@ class QuestionAPI:
                 if revealed_node.observation.evaluated:
                     if revealed_node.observation.score > self._current_best_score:
                         self._current_best_score = revealed_node.observation.score
+
+                if on_reveal is not None:
+                    on_reveal(revealed_node)
 
         probes_cost = len(active_batch)
         self._probes_spent += probes_cost

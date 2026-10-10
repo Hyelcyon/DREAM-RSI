@@ -11,9 +11,9 @@
 [![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-8_tools_%7C_2_resources-5c4ee5?style=flat-square)](docs/mcp-contracts.md)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](docs/mcp-contracts.md)
 [![Type Checked](https://img.shields.io/badge/types-pyright_strict-blue?style=flat-square)](pyrightconfig.json)
-[![Tests](https://img.shields.io/badge/tests-23%20passed-success?style=flat-square)](tests)
+[![Tests](https://img.shields.io/badge/tests-38%20passed-success?style=flat-square)](tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
 
@@ -157,7 +157,7 @@ Diagnostic logs route strictly to standard error (stderr), keeping standard inpu
 
 ## MCP Tools
 
-DREAM-RSI provides 8 MCP tools and 2 MCP resources:
+DREAM-RSI provides 11 MCP tools and 3 MCP resources:
 
 | Tool | Purpose | Key Parameters | Return Value |
 | :--- | :--- | :--- | :--- |
@@ -168,12 +168,16 @@ DREAM-RSI provides 8 MCP tools and 2 MCP resources:
 | `dream_replay_get_frontier` | Compute beta-sweep Pareto frontier across all trees | `beta_steps`, `worker_cap`, `max_budget` | Array of Pareto frontier points |
 | `dream_policy_compare` | Compare candidate policy against baseline policy | `candidate_beta`, `baseline_beta`, `worker_cap` | Win rate, score delta, recommendation |
 | `dream_policy_plan_grid` | Plan deterministic branch count $W$ and depth $R$ | `context` (optional) | Recommended $W$ and $R$ grid parameters |
+| `dream_policy_select_beta` | Calculate cross-cycle default beta adaptation | `history_scores`, `current_beta`, `worker_cap` | Next cycle beta, delta, and rationale |
+| `dream_benchmark_evaluate` | Evaluate candidate construction on scientific tasks | `problem`, `payload` | Validation flag, metrics, and score |
+| `dream_benchmark_create_tree` | Generate benchmark-grounded discovery tree | `problem`, `tree_id`, `num_branches`, `depth_per_branch` | Tree ID, problem type, and node count |
 | `dream_status` | Query engine status and storage integrity | None | Health status and store path metadata |
 
 ### MCP Resources
 
 - `dream://history/manifest`: Returns a summary manifest of all recorded discovery trees, best scores, and node counts.
 - `dream://status`: Returns engine health diagnostics and storage directory verification.
+- `dream://benchmarks/catalog`: Returns catalog of scientific discovery tasks and verification criteria.
 
 ---
 

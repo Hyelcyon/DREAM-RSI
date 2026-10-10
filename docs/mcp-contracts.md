@@ -146,7 +146,65 @@ Determines optimal search parameters (branch width $W$ and depth $R$) determinis
   }
   ```
 
-### 8. `dream_status`
+### 8. `dream_policy_select_beta`
+Calculates next-cycle default beta adaptation based on score history trend and Pareto frontier.
+
+- **Parameters**:
+  - `history_scores` (`array of numbers`, optional): Historical best scores across discovery cycles.
+  - `current_beta` (`number`, optional, default `0.6`): Current cycle exploitation factor.
+  - `worker_cap` (`integer`, optional, default `10`): Maximum concurrent worker simulation.
+- **Response Schema**:
+  ```json
+  {
+    "status": "success",
+    "result": {
+      "cycle_beta": 0.75,
+      "direction": "exploit",
+      "delta": 0.15,
+      "reason": "plateau_detected_frontier_exploitative"
+    }
+  }
+  ```
+
+### 9. `dream_benchmark_evaluate`
+Evaluates a candidate construction on scientific discovery benchmark tasks.
+
+- **Parameters**:
+  - `problem` (`string`, required): One of `sum_difference`, `circle_packing`, `autocorrelation`, `lasso`.
+  - `payload` (`object`, required): Problem-specific construction parameters.
+- **Response Schema**:
+  ```json
+  {
+    "status": "success",
+    "result": {
+      "valid": true,
+      "score": 1.05,
+      "objective_value": 1.05,
+      "metrics": { ... }
+    }
+  }
+  ```
+
+### 10. `dream_benchmark_create_tree`
+Instantiates a realistic benchmark-grounded discovery tree and saves it into the store.
+
+- **Parameters**:
+  - `problem` (`string`, required): Benchmark problem name (`sum_difference`, `circle_packing`, `autocorrelation`, `lasso`).
+  - `tree_id` (`string`, required): Unique identifier for the created discovery tree.
+  - `num_branches` (`integer`, optional, default `4`): Number of exploration branches.
+  - `depth_per_branch` (`integer`, optional, default `4`): Refinement depth per branch.
+  - `seed` (`integer`, optional, default `42`): Deterministic random seed.
+- **Response Schema**:
+  ```json
+  {
+    "status": "success",
+    "tree_id": "tree_circle_packing_01",
+    "problem": "circle_packing",
+    "total_nodes": 17
+  }
+  ```
+
+### 11. `dream_status`
 Queries engine health, registered tree counts, and active storage path.
 
 - **Parameters**: None
@@ -170,3 +228,6 @@ Returns a JSON summary manifest of all discovery trees, including node counts, b
 
 ### `dream://status`
 Returns real-time health status, engine version, and active tree count.
+
+### `dream://benchmarks/catalog`
+Returns a JSON catalog of paper-grounded scientific discovery benchmark tasks with domain objectives and verification criteria.

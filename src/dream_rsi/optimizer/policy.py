@@ -1,25 +1,61 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
-from dream_rsi.core.models import GridPlan, GridPlanningContext
+from dream_rsi.core.models import GridPlan, GridPlanningContext, TreeNode
+from dream_rsi.core.signals import (
+    BranchTrajectory,
+    branch_failed_hard,
+    branch_promising,
+)
 from dream_rsi.replay.question import QuestionAPI
 
 
-class DynamicPortfolioPolicy:
-    def __init__(
-        self,
-        name: str = "dynamic_portfolio",
-        beta: float = 0.5,
-        worker_cap: int = 10,
-        enable_recovery: bool = True,
-    ) -> None:
-        self.name = name
-        self.beta = min(1.0, max(0.0, float(beta)))
-        self.worker_cap = max(1, int(worker_cap))
-        self.enable_recovery = bool(enable_recovery)
+class OptimalPolicy:
+    NAME = "OptimalPolicy"
+
+    def __init__(self, config: dict[str, Any] | None = None) -> None:
+        self.config: dict[str, Any] = config or {}
+        self.name: str = str(self.config.get("name", self.NAME))
+        self.beta: float = min(1.0, max(0.0, float(self.config.get("beta", 0.6))))
+        self.worker_cap: int = max(1, int(self.config.get("worker_cap", 10)))
+        self.schedule: dict[str, float] = self._schedule(self.beta)
+
+    def _schedule(self, beta: float) -> dict[str, float]:
+        """Routes behavioral parameters through single beta scalar."""
+        return {
+            "patience": float(max(1, int(2 + round(4 * beta)))),
+            "min_gain": float(max(0.0, 0.05 * (1.0 - beta))),
+            "exploit_ratio": float(max(0.2, min(0.8, beta))),
+            "stagnation_limit": float(max(2, int(3 + round(5 * beta)))),
+            "reserve_threshold": float(0.1 * (1.0 - beta)),
+        }
+
+    def reconstruct_trajectories(self, question: QuestionAPI) -> dict[int, BranchTrajectory]:
+        """Reconstructs ordered prefix trajectories for each branch observed so far."""
+        observed = question.observed()
+        branches: dict[int, list[TreeNode]] = {}
+        for node in observed.values():
+            if node.is_root:
+                continue
+            b_id = node.branch_id
+            if b_id not in branches:
+                branches[b_id] = []
+            branches[b_id].append(node)
+
+        for b_nodes in branches.values():
+            b_nodes.sort(key=lambda n: n.depth)
+
+        trajectories: dict[int, BranchTrajectory] = {}
+        for b_id, b_nodes in branches.items():
+            trajectories[b_id] = BranchTrajectory.from_nodes(b_id, b_nodes)
+
+        return trajectories
 
     def step(self, question: QuestionAPI) -> list[str]:
+        """Builds one dynamic portfolio batch up to max_parallelism."""
+        w_cap = min(self.worker_cap, question.max_parallelism)
         admissible = question.admissible_continuations()
         unrevealed_cand = question.get_unrevealed_continuations()
         if not unrevealed_cand:
@@ -32,54 +68,101 @@ class DynamicPortfolioPolicy:
                 root_id = nid
                 break
 
-        leaves = [nid for nid in admissible if nid != root_id and nid in unrevealed_cand]
+        trajectories = self.reconstruct_trajectories(question)
+        patience = int(self.schedule["patience"])
 
-        recovery_candidates = [
-            nid for nid in leaves
-            if observed[nid].observation.is_repairable
-        ]
+        closed_branches: set[int] = set()
+        for b_id, traj in trajectories.items():
+            if traj.is_closed:
+                closed_branches.add(b_id)
+            elif traj.consecutive_failures >= patience and not traj.has_successful_anchor:
+                closed_branches.add(b_id)
 
-        exploitation_candidates = [
-            nid for nid in leaves
-            if nid not in recovery_candidates
-        ]
-        exploitation_candidates.sort(
-            key=lambda x: observed[x].observation.score,
-            reverse=True,
-        )
+        eligible_frontiers: list[str] = []
+        recovery_candidates: list[str] = []
+
+        for nid in admissible:
+            if nid == root_id or nid not in unrevealed_cand:
+                continue
+            node = observed[nid]
+            b_id = node.branch_id
+            if b_id in closed_branches:
+                continue
+
+            obs = node.observation
+            if obs.is_repairable and not branch_failed_hard(obs):
+                recovery_candidates.append(nid)
+            else:
+                eligible_frontiers.append(nid)
+
+        def score_frontier(nid: str) -> float:
+            node = observed[nid]
+            b_id = node.branch_id
+            traj = trajectories.get(b_id)
+            base_s = node.observation.score if node.observation.evaluated else 0.0
+            anchor_s = traj.successful_anchor_score if traj else base_s
+            trend = traj.score_trend if traj else 0.0
+            return float(anchor_s + (0.5 * trend) + (0.1 * node.observation.delta_vs_parent))
+
+        eligible_frontiers.sort(key=score_frontier, reverse=True)
 
         batch: list[str] = []
 
-        if self.enable_recovery and recovery_candidates and len(batch) < self.worker_cap:
-            batch.append(recovery_candidates[0])
+        def can_add(candidate_id: str) -> bool:
+            for existing_id in batch:
+                if question._is_ancestor_in_observed(existing_id, candidate_id):
+                    return False
+                if question._is_ancestor_in_observed(candidate_id, existing_id):
+                    return False
+            return True
 
-        remaining_slots = self.worker_cap - len(batch)
-        if remaining_slots <= 0:
-            return batch
+        if recovery_candidates and len(batch) < w_cap:
+            recovery_candidates.sort(key=lambda x: observed[x].observation.score, reverse=True)
+            if can_add(recovery_candidates[0]):
+                batch.append(recovery_candidates[0])
 
-        target_exploit = int(math.floor(remaining_slots * self.beta))
-        exploit_allocated = 0
+        remaining_slots = w_cap - len(batch)
+        if remaining_slots > 0:
+            exploit_target = int(math.floor(remaining_slots * self.schedule["exploit_ratio"]))
+            exploit_count = 0
+            for cand in eligible_frontiers:
+                if exploit_count >= exploit_target or len(batch) >= w_cap:
+                    break
+                if can_add(cand):
+                    batch.append(cand)
+                    exploit_count += 1
 
-        for cand in exploitation_candidates:
-            if exploit_allocated >= target_exploit or len(batch) >= self.worker_cap:
-                break
-            batch.append(cand)
-            exploit_allocated += 1
-
-        while len(batch) < self.worker_cap and root_id in unrevealed_cand:
+        while len(batch) < w_cap and root_id in unrevealed_cand and can_add(root_id):
             batch.append(root_id)
 
-        if len(batch) < self.worker_cap:
-            for cand in exploitation_candidates:
-                if cand not in batch:
+        if len(batch) < w_cap:
+            for cand in eligible_frontiers:
+                if cand not in batch and can_add(cand):
                     batch.append(cand)
-                    if len(batch) >= self.worker_cap:
+                    if len(batch) >= w_cap:
                         break
 
         return batch
 
-    @staticmethod
-    def plan_grid(context: GridPlanningContext) -> GridPlan:
+    def solve(self, question: QuestionAPI, budget: int | None = None) -> list[TreeNode]:
+        """Executes full exploration rollout over question environment."""
+        question.reset()
+        revealed: list[TreeNode] = []
+        while not question.is_exhausted():
+            if budget is not None and question.probes_spent >= budget:
+                break
+            batch = self.step(question)
+            if not batch:
+                break
+            newly_revealed = question.probe_batch(batch)
+            if not newly_revealed:
+                break
+            revealed.extend(newly_revealed)
+        return revealed
+
+    @classmethod
+    def plan_grid(cls, context: GridPlanningContext) -> GridPlan:
+        """Determines width W and depth R based on historical discovery evidence."""
         w_cap = context.worker_cap
         hard_max_w = context.hard_max_branch_count
         hard_max_r = context.hard_max_refine_count
@@ -98,13 +181,44 @@ class DynamicPortfolioPolicy:
         success_count = sum(1 for t in context.history if t.best_score > 0.0)
         success_ratio = success_count / total_trees
 
-        if success_ratio >= 0.7:
-            w = min(hard_max_w, max(2, int(w_cap * 1.5)))
-            r = min(hard_max_r, max(2, int(avg_depth + 2)))
-            reason = "High success history: scaled width and depth for aggressive exploitation."
-        else:
-            w = min(hard_max_w, max(4, w_cap * 2))
-            r = min(hard_max_r, max(1, int(avg_depth * 0.8) or 2))
-            reason = "Exploration phase: widened branch count and bounded refinement depth."
+        if success_ratio > 0.5:
+            w = min(hard_max_w, max(2, int(w_cap * 0.8)))
+            r = min(hard_max_r, int(avg_depth * 1.5))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="High success history: narrowed width and deepened refinement.",
+            )
 
-        return GridPlan(branch_count=w, refine_count=r, reason=reason)
+        if success_ratio < 0.25:
+            w = min(hard_max_w, max(4, int(w_cap * 1.5)))
+            r = max(2, int(avg_depth * 0.75))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="Low early success rate: expanded hypothesis width W to sample diverse roots.",
+            )
+
+        w = min(hard_max_w, max(2, w_cap))
+        r = min(hard_max_r, max(3, int(round(avg_depth))))
+        return GridPlan(
+            branch_count=w,
+            refine_count=r,
+            reason="Balanced empirical progress: calibrated grid to historical average depth.",
+        )
+
+
+class DynamicPortfolioPolicy(OptimalPolicy):
+    def __init__(
+        self,
+        name: str = "dynamic_portfolio",
+        beta: float = 0.5,
+        worker_cap: int = 10,
+        enable_recovery: bool = True,
+    ) -> None:
+        super().__init__(config={
+            "name": name,
+            "beta": beta,
+            "worker_cap": worker_cap,
+            "enable_recovery": enable_recovery,
+        })

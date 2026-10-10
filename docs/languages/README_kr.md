@@ -11,9 +11,9 @@
 [![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
 [![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-8_tools_%7C_2_resources-5c4ee5?style=flat-square)](../mcp-contracts.md)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](../mcp-contracts.md)
 [![Type Checked](https://img.shields.io/badge/types-pyright_strict-blue?style=flat-square)](../../pyrightconfig.json)
-[![Tests](https://img.shields.io/badge/tests-23%20passed-success?style=flat-square)](../../tests)
+[![Tests](https://img.shields.io/badge/tests-38%20passed-success?style=flat-square)](../../tests)
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
 
@@ -157,7 +157,7 @@ uv run dream-rsi
 
 ## MCP 도구 목록
 
-DREAM-RSI는 8개의 MCP 도구와 2개의 리소스를 제공합니다:
+DREAM-RSI는 11개의 MCP 도구와 3개의 리소스를 제공합니다:
 
 | 도구명 | 목적 | 주요 파라미터 | 반환값 |
 | :--- | :--- | :--- | :--- |
@@ -168,12 +168,16 @@ DREAM-RSI는 8개의 MCP 도구와 2개의 리소스를 제공합니다:
 | `dream_replay_get_frontier` | 전체 트리 대상 베타 스윕 파레토 프론티어 연산 | `beta_steps`, `worker_cap`, `max_budget` | 파레토 프론티어 좌표 배열 |
 | `dream_policy_compare` | 후보 정책과 베이스라인 정책의 승률 및 점수 비교 | `candidate_beta`, `baseline_beta`, `worker_cap` | 승률, 점수 델타, 정책 추천 결과 |
 | `dream_policy_plan_grid` | 결정론적 워커 수 $W$ 및 깊이 $R$ 그리드 계획 | `context` (선택 사항) | 권장 $W$ 및 $R$ 그리드 파라미터 |
+| `dream_policy_select_beta` | 교차 주기 기본 베타 적응 연산 | `history_scores`, `current_beta`, `worker_cap` | 다음 주기 베타, 변화량 및 사유 |
+| `dream_benchmark_evaluate` | 과학적 벤치마크 문제에 대한 후보 해법 검증 | `problem`, `payload` | 유효성 여부, 세부 메트릭 및 최종 점수 |
+| `dream_benchmark_create_tree` | 벤치마크 기반 가상 탐색 트리 인스턴스화 | `problem`, `tree_id`, `num_branches`, `depth_per_branch` | 트리 ID, 문제 유형 및 총 노드 수 |
 | `dream_status` | 엔진 상태 및 스토리지 무결성 진단 | 없음 | 헬스 상태 및 저장소 경로 메타데이터 |
 
 ### MCP 리소스
 
 - `dream://history/manifest`: 기록된 모든 탐색 트리의 요약 매니페스트를 반환합니다.
 - `dream://status`: 엔진 헬스 진단 및 스토리지 무결성 결과를 반환합니다.
+- `dream://benchmarks/catalog`: 과학적 탐색 벤치마크 과제 카탈로그 및 검증 기준을 반환합니다.
 
 ---
 
