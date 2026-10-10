@@ -1,0 +1,21 @@
+# Python Bytecode
+__pycache__/
+*.py[cod]
+
+# Virtual Environments
+.env/
+.venv/
+
+# IDE
+.vscode/
+
+# Testing
+.pytest_cache/
+
+# Runtime Data
+data/trees/
+
+# Local Configurations
+mcp_config.json
+
+# OS

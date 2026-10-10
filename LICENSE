@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026 Hyelcyon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+------------------------------------------------------------------------------
+Attribution and Research Citation Notice
+------------------------------------------------------------------------------
+This software is an independent cleanroom implementation of the algorithmic
+framework and methodology described in the research publication:
+
+  "Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems"
+  Authors: Kid Zheng et al.
+  Reference: arXiv:2609.14858 (2026)
+  Official Repository: https://github.com/zhengkid/Dream-RSI
+
+This codebase was developed independently from the published paper text and
+specifications. It does not reproduce or incorporate copyrighted source code
+from the original authors. This project is not affiliated with, endorsed by,
+or sponsored by the original authors or their affiliated institutions.

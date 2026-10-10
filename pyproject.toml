@@ -1,0 +1,35 @@
+[project]
+name = "dream-rsi"
+version = "0.1.0"
+description = "Cleanroom Recursive Self-Improvement and Policy Optimization MCP Server for AI Agents"
+readme = "README.md"
+license = "MIT"
+authors = [
+    { name = "Hyelcyon", email = "hyeseongan871@gmail.com" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.3.0",
+    "pydantic>=2.14.0",
+]
+
+[project.optional-dependencies]
+cuda = [
+    "cuda-python>=13.4.0",
+    "nvidia-cuda-nvrtc-cu12>=12.9.0",
+    "numpy>=2.0.0",
+]
+
+[project.scripts]
+dream-rsi = "dream_rsi:main"
+
+[build-system]
+requires = ["uv_build>=0.12.22,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pyright>=1.1.414",
+]

@@ -1,0 +1,14 @@
+Dream-RSI Cleanroom Implementation
+Copyright (c) 2026 Hyelcyon
+
+This product contains an independent cleanroom implementation of the algorithmic
+framework described in the research paper:
+
+"Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems"
+Authors: Kid Zheng et al.
+arXiv: 2609.14858 (2026)
+Project: https://dream-rsi.com
+Repository: https://github.com/zhengkid/Dream-RSI
+
+All source code in this repository is original work authored by Hyelcyon and
+is licensed under the MIT License (see LICENSE file).
