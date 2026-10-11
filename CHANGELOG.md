@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.3.0] - 2026-10-11
+
+### Features
+
+- **optimizer**: Implement paper-exact evidence-based grid planning rules (`OptimalPolicy.plan_grid`) grounded in paper Page 22 width-versus-depth heuristics:
+  - Rule 1: Increase width $W$ and hold depth $R$ when distinct roots improve early while deeper refinements stall.
+  - Rule 2: Reduce width $W$ and increase depth $R$ when high gains arrive late on repeatable directions.
+  - Rule 3: Conservatively reduce width and depth upon repeated hard unrecoverable failures.
+  - Rule 4: Increase width $W$ to uncover new directions when explored branches plateau after sufficient depth.
+  - Rules 5–6: Success ratio calibration and balanced default empirical schedules.
+- **optimizer**: Implement multi-objective Pareto non-domination extraction (`PolicyOptimizer.is_dominated`, `filter_non_dominated`) in `dream_replay_get_frontier` tool and optimizer engine.
+- **optimizer**: Align `OptimalPolicy.step` portfolio allocation with paper Listing 2:
+  - 3-role priority schedule: justified recovery, exploration pool representation, and exploitation of strong refinements.
+  - Ancestor-conflict prevention and strict candidate uniqueness within generation batches.
+- **benchmarks**: Enhance scientific discovery benchmark evaluators and synthesis:
+  - Add Lasso coordinate descent reference solver and geometric mean runtime metric ($R_{\text{search}}$) to tree generator and MCP tools.
+  - Add heuristic high-gamma seed search (`search_high_gamma`) to Sum-Difference benchmark tool.
+  - Add iterative physical relaxation optimizer (`optimize_packing`) to Circle Packing benchmark tool.
+- **core**: Add duck-typed observation convenience properties on `TreeNode` (`branch`, `attempt`, `score`, `evaluated`, `valid`, `delta_vs_baseline`, `delta_vs_parent`, `is_successful`, `is_repairable`, `fail_class`, `n_valid`, `n_total`).
+- **core**: Expand `HistorySummaryItem` with granular branch signals (`early_improvements`, `stalled_deep_refinements`, `late_high_gains`, `plateaued_branches`, `hard_failures`) and expand repairable failure classification taxonomy in `Observation`.
+- **mcp**: Add automated cross-client configuration tooling (`scripts/configure_clients.py`) supporting Claude Desktop, Claude Code, OpenAI Codex, and Google Antigravity across platforms.
+- **mcp**: Add automated schema synchronization (`scripts/sync_mcp_schemas.py`) keeping Antigravity tool definitions synchronized upon verification.
+
+### Fixes & Security
+
+- **security**: Untrack local machine-specific `.mcp.json` from git and provide portable repository-level `.mcp.json.example`.
+- **mcp**: Ground default `DREAM_RSI_STORE_DIR` path resolution relative to repository root when launched from arbitrary working directories.
+
+### Documentation & Branding
+
+- **branding**: Add official institution logos for Google DeepMind, University of Maryland (UMD), and University of Virginia (UVA) with adaptive dark/light SVG assets.
+- **badges**: Streamline repository badges to flat rounded styling.
+- **tests**: Expand test suite to 48 comprehensive unit and integration tests with 100% pass rate.
+
 ## [0.2.0] - 2026-10-10
 
 ### Features

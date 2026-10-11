@@ -6,7 +6,7 @@ Dream-RSI is a cleanroom Python implementation of the Dream-RSI (Recursive Self-
 
 The simulation and evaluation engine operates strictly offline with zero external token expenditure. It has no authority to make external network requests, provision remote resources, or mutate outside filesystem trees. All exploration history is contained within local JSON stores governed by `DREAM_RSI_STORE_DIR` or the local `data/trees` directory.
 
-The MCP adapter provides 8 tools and 2 resources over standard input and output (STDIO). It holds mutation authority solely over registered discovery trees within the designated store path. It must never print diagnostic messages to standard output; all diagnostic logging must route exclusively to standard error to preserve JSON-RPC transport integrity.
+The MCP adapter provides 11 tools and 3 resources over standard input and output (STDIO). It holds mutation authority solely over registered discovery trees within the designated store path. It must never print diagnostic messages to standard output; all diagnostic logging must route exclusively to standard error to preserve JSON-RPC transport integrity.
 
 Preserve caller-selected budgets and policy hyperparameters, including worker caps, beta exploitation targets, and probe limits. Distinguish between verified empirical replay scores, mathematical Pareto rewards, and unverified candidate policies.
 
@@ -25,9 +25,9 @@ Atomic file operations must be enforced in `JsonFileHistoryStore`. Paths must be
 Use `uv` and Python 3.10 or higher for the pinned toolchain.
 
 - `uv sync`: install and sync locked dependencies from `uv.lock`.
-- `uv run pytest`: execute all 23 unit and integration tests.
+- `uv run pytest`: execute all 48 unit and integration tests.
 - `uv run pyright`: execute cached strict static type analysis.
-- `uv run python scripts/verify_mcp.py`: execute live STDIO MCP protocol handshake and all 8 tool calls.
+- `uv run python scripts/verify_mcp.py`: execute live STDIO MCP protocol handshake and all 11 tool calls.
 - `uv run dream-rsi`: launch the MCP server over STDIO.
 
 Use relevant checks for changes. Fast verification combines `uv run pyright` and `uv run pytest`. Full verification requires `uv run python scripts/verify_mcp.py`.
