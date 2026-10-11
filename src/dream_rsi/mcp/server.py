@@ -161,10 +161,12 @@ def create_mcp_server(
             worker_cap=worker_cap,
             max_budget=max_budget,
         )
+        non_dominated = optimizer.filter_non_dominated(frontier)
         return json.dumps({
             "status": "success",
             "trees_evaluated": len(trees),
             "frontier": [p.model_dump(mode="json") for p in frontier],
+            "non_dominated_frontier": [p.model_dump(mode="json") for p in non_dominated],
         }, ensure_ascii=False)
 
     @server.tool(name="dream_policy_compare")

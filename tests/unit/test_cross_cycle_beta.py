@@ -56,3 +56,26 @@ def test_select_cross_cycle_beta_insufficient_history() -> None:
     )
     assert res.recommended_beta == 0.6
     assert "insufficient" in res.reason.lower()
+
+
+def test_pareto_dominance_filtering() -> None:
+    p_high_score = FrontierPoint(
+        beta=0.8, mean_replay_score=1.2, mean_pareto_reward=0.7, mean_pareto_auc=1.1, mean_parallel_penalty=0.2
+    )
+    p_dominated = FrontierPoint(
+        beta=0.4, mean_replay_score=1.0, mean_pareto_reward=0.6, mean_pareto_auc=0.9, mean_parallel_penalty=0.3
+    )
+    p_high_reward = FrontierPoint(
+        beta=0.2, mean_replay_score=1.1, mean_pareto_reward=0.85, mean_pareto_auc=1.2, mean_parallel_penalty=0.1
+    )
+
+    optimizer = PolicyOptimizer()
+    assert optimizer.is_dominated(p_dominated, p_high_score) is True
+    assert optimizer.is_dominated(p_high_score, p_dominated) is False
+    assert optimizer.is_dominated(p_high_score, p_high_reward) is False
+
+    frontier = optimizer.filter_non_dominated([p_high_score, p_dominated, p_high_reward])
+    assert len(frontier) == 2
+    assert p_dominated not in frontier
+    assert p_high_score in frontier
+    assert p_high_reward in frontier

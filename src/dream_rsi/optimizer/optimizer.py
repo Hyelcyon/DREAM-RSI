@@ -14,6 +14,7 @@ class FrontierPoint(BaseModel):
     mean_pareto_reward: float
     mean_pareto_auc: float
     mean_parallel_penalty: float
+    is_non_dominated: bool = True
 
 
 class PolicyEvaluationSummary(BaseModel):
@@ -60,6 +61,25 @@ class PolicyOptimizer:
         self.evaluator = evaluator or ReplayEvaluator()
         self.simulator = simulator or ReplaySimulator(evaluator=self.evaluator)
 
+    @staticmethod
+    def is_dominated(p1: FrontierPoint, p2: FrontierPoint) -> bool:
+        """Determines if p2 dominates p1 across multi-objective Pareto dimensions."""
+        score_diff = p2.mean_replay_score - p1.mean_replay_score
+        reward_diff = p2.mean_pareto_reward - p1.mean_pareto_reward
+        at_least_as_good = score_diff >= -1e-9 and reward_diff >= -1e-9
+        strictly_better = score_diff > 1e-6 or reward_diff > 1e-6
+        return at_least_as_good and strictly_better
+
+    @classmethod
+    def filter_non_dominated(cls, points: list[FrontierPoint]) -> list[FrontierPoint]:
+        """Extracts strictly non-dominated points on the empirical Pareto frontier."""
+        non_dominated: list[FrontierPoint] = []
+        for p in points:
+            if not any(cls.is_dominated(p, other) for other in points if other is not p):
+                non_dominated.append(p)
+        non_dominated.sort(key=lambda x: (x.mean_replay_score, x.mean_pareto_reward), reverse=True)
+        return non_dominated
+
     def evaluate_frontier(
         self,
         trees: list[DiscoveryTree],
@@ -85,6 +105,10 @@ class PolicyOptimizer:
                 mean_pareto_auc=eval_result.mean_pareto_auc,
                 mean_parallel_penalty=eval_result.mean_parallel_penalty,
             ))
+
+        for p in frontier:
+            dominated = any(self.is_dominated(p, other) for other in frontier if other is not p)
+            p.is_non_dominated = not dominated
 
         frontier.sort(key=lambda x: x.mean_replay_score, reverse=True)
         return frontier

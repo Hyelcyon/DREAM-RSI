@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import random
-from dream_rsi.core.models import DiscoveryTree, Observation, TreeNode
-from dream_rsi.benchmarks.sum_difference import SumDifferenceEvaluator
-from dream_rsi.benchmarks.circle_packing import CirclePackingEvaluator
 from dream_rsi.benchmarks.autocorrelation import AutocorrelationEvaluator
+from dream_rsi.benchmarks.circle_packing import CirclePackingEvaluator
+from dream_rsi.benchmarks.lasso import LassoEvaluator
+from dream_rsi.benchmarks.sum_difference import SumDifferenceEvaluator
+from dream_rsi.core.models import DiscoveryTree, Observation, TreeNode
 
 
 def generate_benchmark_discovery_tree(
@@ -30,6 +31,19 @@ def generate_benchmark_discovery_tree(
         grid = AutocorrelationEvaluator.uniform_density_baseline(101)
         ac_res = AutocorrelationEvaluator.evaluate(grid)
         baseline_score = 2.0 - ac_res.phi_1
+    elif problem_type == "lasso":
+        x_rows = [
+            [1.0, 0.4, -0.2],
+            [0.5, 0.9, 0.1],
+            [-0.3, 0.2, 0.8],
+            [0.7, -0.5, 0.3],
+            [-0.2, 0.6, -0.4],
+        ]
+        y = [1.1, 0.7, -0.2, 0.6, -0.1]
+        lambdas = [0.2, 0.1, 0.05]
+        cand_path = LassoEvaluator.solve_coordinate_descent(x_rows, y, lambdas, max_iter=100)
+        lasso_res = LassoEvaluator.evaluate_solution(x_rows, y, lambdas, cand_path, runtime_ms=10.0)
+        baseline_score = lasso_res.search_score
 
     root_node = TreeNode(
         node_id="root",

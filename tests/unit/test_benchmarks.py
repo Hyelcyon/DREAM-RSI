@@ -80,7 +80,7 @@ def test_lasso_coordinate_descent_and_evaluation() -> None:
 
 
 def test_generate_benchmark_discovery_tree() -> None:
-    for problem in ["sum_difference", "circle_packing", "autocorrelation"]:
+    for problem in ["sum_difference", "circle_packing", "autocorrelation", "lasso"]:
         tree = generate_benchmark_discovery_tree(
             problem_type=problem,
             tree_id=f"tree_{problem}",
