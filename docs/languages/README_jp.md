@@ -57,15 +57,40 @@
 
 ### エージェント設定
 
+#### 自動クライアント設定
+
+```bash
+uv run python scripts/configure_clients.py --all
+```
+
+#### 手動設定 (Claude Desktop / Claude Code / Codex)
+
+Claude (`claude_desktop_config.json` または `.mcp.json`):
+
 ```json
 {
   "mcpServers": {
     "dream-rsi": {
       "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"],
+      "env": {
+        "DREAM_RSI_STORE_DIR": "/absolute/path/to/DREAM-RSI/data/trees"
+      }
     }
   }
 }
+```
+
+OpenAI Codex (`config.toml`):
+
+```toml
+[mcp_servers.dream-rsi]
+command = "uv"
+args = ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+startup_timeout_sec = 60
+
+[mcp_servers.dream-rsi.env]
+DREAM_RSI_STORE_DIR = "/absolute/path/to/DREAM-RSI/data/trees"
 ```
 
 ### サーバー起動

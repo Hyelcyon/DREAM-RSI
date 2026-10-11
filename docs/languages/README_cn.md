@@ -57,15 +57,40 @@
 
 ### Agent 配置
 
+#### 自动跨客户端配置
+
+```bash
+uv run python scripts/configure_clients.py --all
+```
+
+#### 手动配置 (Claude Desktop / Claude Code / Codex)
+
+Claude (`claude_desktop_config.json` 或 `.mcp.json`):
+
 ```json
 {
   "mcpServers": {
     "dream-rsi": {
       "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"],
+      "env": {
+        "DREAM_RSI_STORE_DIR": "/absolute/path/to/DREAM-RSI/data/trees"
+      }
     }
   }
 }
+```
+
+OpenAI Codex (`config.toml`):
+
+```toml
+[mcp_servers.dream-rsi]
+command = "uv"
+args = ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+startup_timeout_sec = 60
+
+[mcp_servers.dream-rsi.env]
+DREAM_RSI_STORE_DIR = "/absolute/path/to/DREAM-RSI/data/trees"
 ```
 
 ### 启动服务
