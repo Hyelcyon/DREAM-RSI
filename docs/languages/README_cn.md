@@ -1,5 +1,24 @@
 <div align="center">
 
+<p>
+  <img src="../../assets/logos/google.svg" alt="Google" height="26" align="middle">
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../../assets/logos/google-deepmind-dark.svg">
+    <img src="../../assets/logos/google-deepmind-light.svg" alt="Google DeepMind" height="22" align="middle">
+  </picture>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../../assets/logos/umd-dark.svg">
+    <img src="../../assets/logos/umd-light.svg" alt="University of Maryland, College Park" height="26" align="middle">
+  </picture>
+  &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="../../assets/logos/uva-dark.svg">
+    <img src="../../assets/logos/uva-light.svg" alt="University of Virginia" height="28" align="middle">
+  </picture>
+</p>
+
 [English](../../README.md) · [한국어](README_kr.md) · [日本語](README_jp.md) · **中文**
 
 # DREAM-RSI: 递归自我改进引擎
