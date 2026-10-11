@@ -355,6 +355,7 @@ source = { editable = "." }
 dependencies = [
     { name = "mcp" },
     { name = "pydantic" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
 
 [package.optional-dependencies]
@@ -380,6 +381,7 @@ requires-dist = [
     { name = "numpy", marker = "extra == 'cuda'", specifier = ">=2.0.0" },
     { name = "nvidia-cuda-nvrtc-cu12", marker = "extra == 'cuda'", specifier = ">=12.9.0" },
     { name = "pydantic", specifier = ">=2.14.0" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=1.1.0" },
 ]
 provides-extras = ["cuda"]
 

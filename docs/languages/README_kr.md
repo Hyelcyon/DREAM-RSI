@@ -59,9 +59,17 @@
 
 ### 1. 에이전트 설정
 
-DREAM-RSI를 표준 STDIO MCP 구성을 통해 에이전트 환경에 연동합니다.
+#### 자동 설정 스크립트
 
-#### Claude Code (`claude_desktop_config.json` 또는 프로젝트 설정)
+설정 스크립트를 실행하여 Claude Desktop, Claude Code, OpenAI Codex, Antigravity에 DREAM-RSI를 자동으로 등록합니다:
+
+```bash
+uv run python scripts/configure_clients.py --all
+```
+
+#### 수동 설정
+
+##### Claude Desktop & Claude Code (`claude_desktop_config.json` 또는 `.mcp.json`)
 
 ```json
 {
@@ -77,38 +85,42 @@ DREAM-RSI를 표준 STDIO MCP 구성을 통해 에이전트 환경에 연동합�
 }
 ```
 
-#### Google Antigravity / Gemini CLI (`mcp_config.json`)
-
-```json
-{
-  "mcpServers": {
-    "dream-rsi": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
-    }
-  }
-}
-```
-
-#### Cursor (`.cursor/mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "dream-rsi": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
-    }
-  }
-}
-```
-
-#### OpenAI Codex (`config.toml`)
+##### OpenAI Codex (`config.toml`)
 
 ```toml
 [mcp_servers.dream-rsi]
 command = "uv"
 args = ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+startup_timeout_sec = 60
+
+[mcp_servers.dream-rsi.env]
+DREAM_RSI_STORE_DIR = "/absolute/path/to/DREAM-RSI/data/trees"
+```
+
+##### Google Antigravity / Gemini CLI (`mcp_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+    }
+  }
+}
+```
+
+##### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+    }
+  }
+}
 ```
 
 ### 2. 에이전트 질의 예시

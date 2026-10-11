@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": [
+        "run",
+        "dream-rsi"
+      ],
+      "env": {
+        "DREAM_RSI_STORE_DIR": "data/trees"
+      }
+    }
+  }
+}

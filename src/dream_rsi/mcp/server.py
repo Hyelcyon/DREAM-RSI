@@ -33,7 +33,15 @@ def create_mcp_server(
     server_name: str = "dream-rsi",
 ) -> MCPServer:
     if store_dir is None:
-        store_dir = os.environ.get("DREAM_RSI_STORE_DIR", "data/trees")
+        env_dir = os.environ.get("DREAM_RSI_STORE_DIR")
+        if env_dir:
+            store_dir = Path(env_dir)
+        else:
+            repo_root = Path(__file__).resolve().parents[3]
+            if (repo_root / "pyproject.toml").is_file():
+                store_dir = repo_root / "data" / "trees"
+            else:
+                store_dir = Path("data/trees").resolve()
     server = MCPServer(
         name=server_name,
         instructions="Dream-RSI Policy Optimization and Historical Replay MCP Server.",

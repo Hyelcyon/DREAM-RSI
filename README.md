@@ -59,9 +59,17 @@ Autonomous agents exploring algorithmic synthesis, mathematical optimization, or
 
 ### 1. Configure Your Agent
 
-Connect DREAM-RSI to your AI agent environment via standard STDIO MCP configuration.
+#### Automated Cross-Client Setup
 
-#### Claude Code (`claude_desktop_config.json` or project MCP settings)
+Run the configuration script to automatically register DREAM-RSI in Claude Desktop, Claude Code, OpenAI Codex, and Antigravity:
+
+```bash
+uv run python scripts/configure_clients.py --all
+```
+
+#### Manual Configuration
+
+##### Claude Desktop & Claude Code (`claude_desktop_config.json` or `.mcp.json`)
 
 ```json
 {
@@ -77,38 +85,42 @@ Connect DREAM-RSI to your AI agent environment via standard STDIO MCP configurat
 }
 ```
 
-#### Google Antigravity / Gemini CLI (`mcp_config.json`)
-
-```json
-{
-  "mcpServers": {
-    "dream-rsi": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
-    }
-  }
-}
-```
-
-#### Cursor (`.cursor/mcp.json`)
-
-```json
-{
-  "mcpServers": {
-    "dream-rsi": {
-      "command": "uv",
-      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
-    }
-  }
-}
-```
-
-#### OpenAI Codex (`config.toml`)
+##### OpenAI Codex (`config.toml`)
 
 ```toml
 [mcp_servers.dream-rsi]
 command = "uv"
 args = ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+startup_timeout_sec = 60
+
+[mcp_servers.dream-rsi.env]
+DREAM_RSI_STORE_DIR = "/absolute/path/to/DREAM-RSI/data/trees"
+```
+
+##### Google Antigravity / Gemini CLI (`mcp_config.json`)
+
+```json
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+    }
+  }
+}
+```
+
+##### Cursor (`.cursor/mcp.json`)
+
+```json
+{
+  "mcpServers": {
+    "dream-rsi": {
+      "command": "uv",
+      "args": ["run", "--directory", "/absolute/path/to/DREAM-RSI", "dream-rsi"]
+    }
+  }
+}
 ```
 
 ### 2. Ask Your Agent

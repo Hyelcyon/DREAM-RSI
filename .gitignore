@@ -17,5 +17,6 @@ data/trees/
 
 # Local Configurations
 mcp_config.json
+.mcp.json
 
 # OS

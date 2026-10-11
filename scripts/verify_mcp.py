@@ -175,6 +175,15 @@ async def run_verification() -> bool:
             assert create_data["status"] == "success"
 
             print(f"[5/5] All {len(expected_tools)} tools verified successfully over live STDIO protocol!")
+
+            try:
+                if str(project_root) not in sys.path:
+                    sys.path.insert(0, str(project_root))
+                from scripts.sync_mcp_schemas import sync_antigravity_schemas
+                await sync_antigravity_schemas()
+            except Exception as e:
+                print(f"Warning: automatic schema sync failed: {e}", file=sys.stderr)
+
             return True
 
 
