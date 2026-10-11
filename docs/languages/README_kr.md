@@ -44,14 +44,14 @@
 
 ---
 
-**DREAM-RSI**는 연구 논문 *Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems* (arXiv: 2609.14858)의 정책 최적화 프레임워크를 기반으로 개발된 클린룸(Cleanroom) Python 구현체입니다. 표준 Model Context Protocol (MCP) STDIO 워크플로를 통해 AI 에이전트에 자율적 자기 개선 기능을 제공합니다.
+**DREAM-RSI**는 연구 논문 *Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems* (arXiv: 2609.14858)를 기반으로 구현된 Python 검색 정책 최적화 엔진이며, Model Context Protocol (MCP) STDIO 서버로 동작합니다.
 
-자율 AI 에이전트가 코드 합성, 알고리즘 최적화, 수학적 증명 등의 복잡한 탐색을 수행할 때 시행착오 트리는 급격히 팽창합니다. 보정되지 않은 탐색 전략은 하위 궤적을 불필요하게 반복하거나 넓은 탐색과 깊은 정제 사이의 균형을 맞추지 못합니다. DREAM-RSI는 **온라인 실제 탐색(Online Discovery)**과 **오프라인 정책 개선(Offline Policy Refinement)**을 분리합니다:
+자율 AI 에이전트가 알고리즘 합성, 수학적 최적화, 시스템 코드 작성을 수행할 때 대규모 시행착오 트리가 형성됩니다. 매번 온라인 환경에서 새로운 탐색 정책을 평가하는 것은 큰 비용과 실행 지연을 초래합니다. DREAM-RSI는 **온라인 트리 확장**과 **오프라인 정책 평가**를 분리합니다:
 
-- **오프라인 시뮬레이션 환경**: 축적된 과거 탐색 트리를 가상 실행 환경으로 활용합니다. 정책 최적화는 외부 API 호출이나 런타임 LLM 프롬프트 없이 기록된 실행 DAG 상에서 직접 수학적으로 평가됩니다.
-- **엄격한 위상 무결성**: 순환 감지(Cycle Detection), 노드 깊이 색인, 원자적(Atomic) 파일 저장을 통해 방향성 비순환 그래프(DAG) 구조를 보장합니다.
-- **파레토 프론티어 최적화**: 파라미터 스윕을 통해 가설 탐색 폭과 반복 정제 깊이 사이의 실증적 트레이드오프 곡선을 연산합니다.
-- **결정론적 그리드 계획**: 이후 탐색 에피소드에 할당할 권장 워커 폭($W$) 및 탐침 깊이($R$)를 동적으로 계산합니다.
+1. **가상 시뮬레이터로서의 탐색 트리**: 과거 실행 기록은 노드별 실행 결과 및 검증 신호를 포함하는 방향성 비순환 그래프(DAG)를 구성합니다. 리플레이 엔진은 외부 LLM 호출 없이 이 그래프를 시뮬레이션 환경으로 사용합니다.
+2. **오프라인 리플레이('Dreaming')**: 과거 상태-행동 전이 위에서 다양한 탐색-활용 균형 계수($\beta$)를 적용하여 여러 정책 후보군을 시뮬레이션합니다.
+3. **다목적 프론티어 평가**: 파레토 효율성 지표를 기반으로 탐색 폭($W$)과 반복 정제 깊이($R$) 간의 실증적 트레이드오프를 도출합니다.
+4. **재귀적 탐색 전략 개선**: 오프라인 리플레이로 검증된 최적 정책을 다음 온라인 탐색 에피소드에 적용하여, 향후 정책 개선을 위한 더 풍부한 탐색 트리를 누적합니다.
 
 ---
 
@@ -133,42 +133,66 @@ uv run dream-rsi
 
 ## 작동 원리
 
-```
- ┌────────────────────────────────────────────────────────┐
- │                   온라인 실제 탐색                     │
- │   에이전트가 코드, 증명, 가설 생성 시도 수행           │
- └───────────────────────────┬────────────────────────────┘
-                             │
-                             ▼  dream_history_save_node
- ┌────────────────────────────────────────────────────────┐
- │                 탐색 트리 로컬 저장소                  │
- │   로컬 JSON DAG: 무결성 검증 및 비순환 보장            │
- └───────────────────────────┬────────────────────────────┘
-                             │
-                             ▼  오프라인 시뮬레이션
- ┌────────────────────────────────────────────────────────┐
- │                 리플레이 시뮬레이션 엔진               │
- │   과거 탐색 트리에서 실행 경로 시뮬레이션              │
- │   기록된 그래프 기반의 결정론적 보상 리플레이          │
- └───────────────────────────┬────────────────────────────┘
-                             │
-                             ▼  dream_replay_get_frontier
- ┌────────────────────────────────────────────────────────┐
- │                 파레토 정책 최적화기                   │
- │   베타 파라미터 전반에 걸친 실증적 프론티어 산출       │
- └───────────────────────────┬────────────────────────────┘
-                             │
-                             ▼  dream_policy_plan_grid
- ┌────────────────────────────────────────────────────────┐
- │                 다음 에피소드 그리드 플래너            │
- │   다음 실행을 위한 최적 (W, R) 자원 할당 결정          │
- └────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph Online["1. 온라인 탐색 (Online Exploration)"]
+        A[LLM 에이전트] -->|1. 코드 / 가설 생성| B[실행 및 검증]
+        B -->|2. 노드 상태 + 오류 분류| C[(JsonFileHistoryStore)]
+    end
+
+    subgraph Offline["2. 오프라인 리플레이 ('Dreaming')"]
+        C -->|3. 탐색 DAG 로드| D[ReplaySimulator]
+        E[후보 정책군 / 베타 스윕] -->|4. 포트폴리오 스텝 모의 실행| D
+        D -->|5. 재구성된 궤적| F[TreeEvaluator]
+    end
+
+    subgraph Optimization["3. 정책 최적화 및 적응 (Optimization)"]
+        F -->|6. 실증 AUC 및 보상 연산| G[PolicyOptimizer]
+        G -->|7. 파레토 프론티어 산출| H[베타 결정 및 그리드 스케줄링]
+    end
+
+    subgraph Redeploy["4. 차기 온라인 탐색 실행"]
+        H -->|8. 할당된 W 워커, R 탐침 깊이| A
+    end
 ```
 
-1. **온라인 기록**: 상호작용 추론 중 호스트 에이전트가 `dream_history_save_node`를 사용해 시도를 기록합니다.
-2. **오프라인 리플레이**: 세션이 중단되거나 완료되면 `dream_replay_run`을 호출하여 과거 궤적을 다양한 $\beta$ 파라미터 하에서 리플레이합니다.
-3. **파레토 프론티어 추출**: `dream_replay_get_frontier`를 호출하여 다목적 트레이드오프 곡선을 계산합니다.
-4. **적응형 그리드 스케줄링**: `dream_policy_plan_grid`를 통해 다음 탐색을 위한 최적 폭($W$)과 깊이($R$)를 제안받습니다.
+### 재귀적 자기 개선 루프 (Recursive Self-Improvement Loop)
+
+DREAM-RSI는 기본 LLM의 가중치 수정이나 정책 최적화 단계에서의 추가 외부 LLM 호출 없이, 탐색 전략 자체를 최적화합니다:
+
+```mermaid
+flowchart TD
+    NodeOnline["<b>온라인 탐색 (Online Discovery)</b><br/>현재 정책으로 탐색 트리 확장"]
+    NodeSave["<b>탐색 트리 DAG (JsonFileHistoryStore)</b><br/>깊이, 점수, 유효성, 오류 분류(fail_class) 저장"]
+    NodeReplay["<b>리플레이 시뮬레이션 ('정확한 세계 모델')</b><br/>과거 기록 위에서 컴파일러 재실행 없이 의사결정 모의"]
+    NodeFrontier["<b>파레토 프론티어 정책 최적화</b><br/>탐색 폭(W)과 활용 강도(beta)의 다목적 트레이드오프 분석"]
+    NodePlan["<b>적응형 자원 할당 계획 (W, R)</b><br/>최적화된 파라미터로 차기 온라인 에피소드 스케줄링"]
+
+    NodeOnline -->|"dream_history_save_node"| NodeSave
+    NodeSave -->|"dream_replay_run"| NodeReplay
+    NodeReplay -->|"dream_replay_get_frontier"| NodeFrontier
+    NodeFrontier -->|"dream_policy_plan_grid"| NodePlan
+    NodePlan -.->|"차기 에피소드 적용"| NodeOnline
+```
+
+### 모듈 구조 및 실행 단계
+
+1. **탐색 트리 저장소 (`src/dream_rsi/storage/`, `src/dream_rsi/core/models.py`)**
+   - 기록되는 노드는 `node_id`, `parent_id`, `branch_id`, `attempt_index`를 유지합니다.
+   - 각 노드는 실행 결과인 `Observation` 객체를 포함하며 상태를 분류합니다 (`syntax_error`, `runtime_error`, `shape_mismatch`, `ok` 등).
+   - `JsonFileHistoryStore`는 순환이 없는 DAG 위상 구조를 검증하고 디스크 원자적 저장을 보장합니다.
+
+2. **리플레이 시뮬레이션 (`src/dream_rsi/replay/`)**
+   - `QuestionAPI`는 과거 탐색 트리를 자원 예산과 병렬 제한이 있는 상태형 문제 환경으로 추상화합니다.
+   - `ReplaySimulator`는 실제 컴파일러나 인터프리터를 재실행하지 않고, 검증된 노드 궤적을 순회하며 다양한 정책을 평가합니다.
+
+3. **정책 평가 및 신호 감지 (`src/dream_rsi/core/signals.py`, `src/dream_rsi/core/evaluator.py`)**
+   - 궤적 신호는 브랜치를 완전 실패, 정체, 또는 유망한 앵커 노드로 분류합니다.
+   - `TreeEvaluator`는 도달한 최고 점수, 순차적 의사결정 라운드 수, 병렬화 패널티를 고려하여 에피소드를 평가합니다.
+
+4. **정책 최적화 (`src/dream_rsi/optimizer/`)**
+   - `DynamicPortfolioPolicy`는 활용 계수 $\beta \in [0, 1]$를 조절하여 신규 루트 탐색과 기존 고득점 브랜치 정제 간의 워커 할당을 배분합니다.
+   - `PolicyOptimizer`는 $\beta$ 스윕을 통해 파레토 프론티어를 도출하고, 다음 탐색 에피소드를 위한 워커 수($W$)와 탐침 깊이($R$)를 계획합니다.
 
 ---
 

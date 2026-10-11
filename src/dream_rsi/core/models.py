@@ -36,6 +36,10 @@ class Observation(BaseModel):
             "timeout",
             "syntax_error",
             "compile_other",
+            "output_mismatch",
+            "correctness_mismatch",
+            "code_error",
+            "memory_limit",
         }
         return self.fail_class in repairable_classes
 
@@ -63,6 +67,58 @@ class TreeNode(BaseModel):
     @property
     def is_root(self) -> bool:
         return self.parent_id is None
+
+    @property
+    def branch(self) -> int:
+        return self.observation.branch
+
+    @property
+    def attempt(self) -> int:
+        return self.observation.attempt
+
+    @property
+    def score(self) -> float:
+        return self.observation.score
+
+    @property
+    def evaluated(self) -> bool:
+        return self.observation.evaluated
+
+    @property
+    def valid(self) -> bool:
+        return self.observation.valid
+
+    @property
+    def fail_class(self) -> str:
+        return self.observation.fail_class
+
+    @property
+    def error(self) -> str | None:
+        return self.observation.error
+
+    @property
+    def delta_vs_baseline(self) -> float:
+        return self.observation.delta_vs_baseline
+
+    @property
+    def delta_vs_parent(self) -> float:
+        return self.observation.delta_vs_parent
+
+    @property
+    def n_valid(self) -> int:
+        return self.observation.n_valid
+
+    @property
+    def n_total(self) -> int:
+        return self.observation.n_total
+
+    @property
+    def is_successful(self) -> bool:
+        return self.observation.is_successful
+
+    @property
+    def is_repairable(self) -> bool:
+        return self.observation.is_repairable
 
 
 def _default_branches() -> dict[int, list[str]]:

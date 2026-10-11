@@ -34,3 +34,23 @@ def test_optimal_policy_step_and_solve() -> None:
     assert len(revealed) > 0
     assert question.probes_spent <= 8
     assert len(question.observed()) > 1
+
+
+def test_optimal_policy_no_duplicates_in_step_batch() -> None:
+    tree = generate_benchmark_discovery_tree(
+        problem_type="circle_packing",
+        tree_id="t_uniq_test",
+        num_branches=4,
+        depth_per_branch=3,
+    )
+    question = QuestionAPI(tree=tree, max_parallelism=4, max_budget=10)
+    policy = OptimalPolicy(config={"beta": 0.5, "worker_cap": 4})
+
+    for _ in range(3):
+        if question.is_exhausted():
+            break
+        batch = policy.step(question)
+        if not batch:
+            break
+        assert len(batch) == len(set(batch))
+        question.probe_batch(batch)

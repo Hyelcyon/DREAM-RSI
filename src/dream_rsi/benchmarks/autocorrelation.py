@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field
 
 class AutocorrelationResult(BaseModel):
     is_valid: bool
+    is_non_negative: bool = True
     phi_1: float = 0.0
     phi_2: float = 0.0
     phi_3: float = 0.0
@@ -18,9 +19,9 @@ class AutocorrelationEvaluator:
 
     f supported on [-1/4, 1/4] with int_{-1/4}^{1/4} f(x) dx = 1
     (f * f)(t) = int f(t - x) f(x) dx, t in [-1/2, 1/2]
-    Phi_1(f) = max_t (f * f)(t)  (minimize)
-    Phi_2(f) = ||f * f||_2^2 / (||f * f||_1 * ||f * f||_inf)  (maximize)
-    Phi_3(f) = max_t |(f * f)(t)|  (minimize)
+    Phi_1(f) = max_t (f * f)(t)  (minimize, f >= 0)
+    Phi_2(f) = ||f * f||_2^2 / (||f * f||_1 * ||f * f||_inf)  (maximize, f >= 0)
+    Phi_3(f) = max_t |(f * f)(t)|  (minimize, possibly signed)
     """
 
     @staticmethod
@@ -29,16 +30,19 @@ class AutocorrelationEvaluator:
         if n < 3:
             return AutocorrelationResult(
                 is_valid=False,
+                is_non_negative=False,
                 error="Grid must contain at least 3 sample points.",
             )
 
         if dx is None:
             dx = 0.5 / (n - 1)
 
+        is_non_neg = all(v >= -1e-9 for v in grid_values)
         mass = (sum(grid_values) - 0.5 * (grid_values[0] + grid_values[-1])) * dx
         if mass <= 0.0 or not math.isfinite(mass):
             return AutocorrelationResult(
                 is_valid=False,
+                is_non_negative=is_non_neg,
                 error=f"Invalid non-positive integral mass {mass}.",
             )
 
@@ -49,8 +53,6 @@ class AutocorrelationEvaluator:
 
         for i in range(n):
             fi = f_norm[i]
-            if fi < 0.0:
-                pass
             for j in range(n):
                 conv[i + j] += fi * f_norm[j] * dx
 
@@ -66,6 +68,7 @@ class AutocorrelationEvaluator:
 
         return AutocorrelationResult(
             is_valid=True,
+            is_non_negative=is_non_neg,
             phi_1=float(phi_1),
             phi_2=float(phi_2),
             phi_3=float(phi_3),

@@ -78,6 +78,9 @@ class OptimalPolicy:
             elif traj.consecutive_failures >= patience and not traj.has_successful_anchor:
                 closed_branches.add(b_id)
 
+        legal_roots = question.legal_roots()
+        unopened_roots = [r for r in legal_roots if r in unrevealed_cand]
+
         eligible_frontiers: list[str] = []
         recovery_candidates: list[str] = []
 
@@ -96,7 +99,11 @@ class OptimalPolicy:
                 eligible_frontiers.append(nid)
 
         def score_frontier(nid: str) -> float:
-            node = observed[nid]
+            if nid == root_id or nid in unopened_roots:
+                return float(question.baseline_score)
+            node = observed.get(nid)
+            if node is None:
+                return 0.0
             b_id = node.branch_id
             traj = trajectories.get(b_id)
             base_s = node.observation.score if node.observation.evaluated else 0.0
@@ -104,11 +111,28 @@ class OptimalPolicy:
             trend = traj.score_trend if traj else 0.0
             return float(anchor_s + (0.5 * trend) + (0.1 * node.observation.delta_vs_parent))
 
-        eligible_frontiers.sort(key=score_frontier, reverse=True)
+        strong_refinements: list[str] = []
+        underexplored_frontiers: list[str] = []
+
+        for nid in eligible_frontiers:
+            node = observed[nid]
+            traj = trajectories.get(node.branch_id)
+            if traj and (traj.has_successful_anchor or traj.score_trend > 0):
+                strong_refinements.append(nid)
+            else:
+                underexplored_frontiers.append(nid)
+
+        strong_refinements.sort(key=score_frontier, reverse=True)
+        underexplored_frontiers.sort(key=score_frontier, reverse=True)
+        recovery_candidates.sort(key=score_frontier, reverse=True)
+
+        exploration_pool = unopened_roots + underexplored_frontiers
 
         batch: list[str] = []
 
         def can_add(candidate_id: str) -> bool:
+            if candidate_id in batch:
+                return False
             for existing_id in batch:
                 if question._is_ancestor_in_observed(existing_id, candidate_id):
                     return False
@@ -116,31 +140,39 @@ class OptimalPolicy:
                     return False
             return True
 
+        # Role 1: Justified recovery (at most one recovery slot)
         if recovery_candidates and len(batch) < w_cap:
-            recovery_candidates.sort(key=lambda x: observed[x].observation.score, reverse=True)
-            if can_add(recovery_candidates[0]):
-                batch.append(recovery_candidates[0])
+            for cand in recovery_candidates:
+                if can_add(cand):
+                    batch.append(cand)
+                    break
 
-        remaining_slots = w_cap - len(batch)
-        if remaining_slots > 0:
-            exploit_target = int(math.floor(remaining_slots * self.schedule["exploit_ratio"]))
-            exploit_count = 0
-            for cand in eligible_frontiers:
-                if exploit_count >= exploit_target or len(batch) >= w_cap:
+        # Role 2: Exploration representation (give representation before filling remaining slots)
+        if exploration_pool and len(batch) < w_cap:
+            for cand in exploration_pool:
+                if can_add(cand):
+                    batch.append(cand)
+                    break
+
+        # Role 3: Exploitation representation (strong refinements)
+        if strong_refinements and len(batch) < w_cap:
+            exploit_target = max(1, int(math.floor((w_cap - len(batch)) * self.schedule["exploit_ratio"])))
+            count = 0
+            for cand in strong_refinements:
+                if count >= exploit_target or len(batch) >= w_cap:
                     break
                 if can_add(cand):
                     batch.append(cand)
-                    exploit_count += 1
+                    count += 1
 
-        while len(batch) < w_cap and root_id in unrevealed_cand and can_add(root_id):
-            batch.append(root_id)
-
-        if len(batch) < w_cap:
-            for cand in eligible_frontiers:
-                if cand not in batch and can_add(cand):
-                    batch.append(cand)
-                    if len(batch) >= w_cap:
-                        break
+        # Fill remaining slots up to w_cap by highest overall priority
+        all_remaining = strong_refinements + exploration_pool + recovery_candidates
+        all_remaining.sort(key=score_frontier, reverse=True)
+        for cand in all_remaining:
+            if len(batch) >= w_cap:
+                break
+            if can_add(cand):
+                batch.append(cand)
 
         return batch
 

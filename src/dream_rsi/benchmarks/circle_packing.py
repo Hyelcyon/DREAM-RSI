@@ -92,3 +92,36 @@ class CirclePackingEvaluator:
                 circles.append(Circle(x=cx, y=cy, r=r * 0.98))
                 count += 1
         return circles
+
+    @classmethod
+    def optimize_packing(
+        cls,
+        initial_circles: list[Circle],
+        max_iterations: int = 150,
+        step_size: float = 0.05,
+    ) -> list[Circle]:
+        """Greedy projected coordinate relaxation to expand radii while maintaining constraints."""
+        circles = [Circle(x=c.x, y=c.y, r=c.r) for c in initial_circles]
+        n = len(circles)
+        if n == 0:
+            return circles
+
+        for _ in range(max_iterations):
+            for i in range(n):
+                c = circles[i]
+                max_r_bound = max(0.0, min(c.x, 1.0 - c.x, c.y, 1.0 - c.y))
+                max_r_pairwise = max_r_bound
+                for j in range(n):
+                    if i == j:
+                        continue
+                    cj = circles[j]
+                    dx = c.x - cj.x
+                    dy = c.y - cj.y
+                    dist = math.sqrt(dx * dx + dy * dy)
+                    max_allowed = dist - cj.r - 1e-7
+                    if max_allowed < max_r_pairwise:
+                        max_r_pairwise = max_allowed
+
+                if max_r_pairwise > c.r:
+                    c.r = min(max_r_bound, max(0.0, c.r + step_size * (max_r_pairwise - c.r)))
+        return circles

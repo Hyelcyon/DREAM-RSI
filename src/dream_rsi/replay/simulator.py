@@ -5,7 +5,7 @@ from typing import Protocol
 from pydantic import BaseModel, Field
 
 from dream_rsi.core.evaluator import ReplayEvaluator
-from dream_rsi.core.models import DiscoveryTree, ReplayEvaluationResult
+from dream_rsi.core.models import DiscoveryTree, ReplayEvaluationResult, TreeNode
 from dream_rsi.replay.question import QuestionAPI
 
 
@@ -15,6 +15,9 @@ class SearchPolicy(Protocol):
     worker_cap: int
 
     def step(self, question: QuestionAPI) -> list[str]:
+        ...
+
+    def solve(self, question: QuestionAPI, budget: int | None = None) -> list[TreeNode]:
         ...
 
 
@@ -49,11 +52,7 @@ class ReplaySimulator:
             max_budget=max_budget,
         )
 
-        while not question.is_exhausted():
-            action_parents = policy.step(question)
-            if not action_parents:
-                break
-            question.probe_batch(action_parents)
+        policy.solve(question, budget=max_budget)
 
         revealed_scores = [
             node.observation.score

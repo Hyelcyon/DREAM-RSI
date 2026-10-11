@@ -270,6 +270,13 @@ def create_mcp_server(
         """Evaluates a candidate construction on scientific benchmark tasks (sum_difference, circle_packing, autocorrelation, lasso)."""
         prob = problem.lower().strip()
         if prob == "sum_difference":
+            action = payload.get("action", "evaluate")
+            if action == "search":
+                max_iter = int(payload.get("max_iterations", 150))
+                seed = int(payload.get("seed", 42))
+                best_set, best_g = SumDifferenceEvaluator.search_high_gamma(max_iterations=max_iter, seed=seed)
+                eval_res = SumDifferenceEvaluator.evaluate(best_set)
+                return json.dumps({"status": "success", "best_set": best_set, "result": eval_res.model_dump(mode="json")})
             elements = payload.get("elements", [])
             if not isinstance(elements, list):
                 return json.dumps({"status": "error", "message": "'elements' must be a list of integers."})
@@ -278,10 +285,20 @@ def create_mcp_server(
             return json.dumps({"status": "success", "result": eval_res.model_dump(mode="json")})
 
         if prob == "circle_packing":
+            action = payload.get("action", "evaluate")
             raw_circles = payload.get("circles", [])
             if not isinstance(raw_circles, list):
                 return json.dumps({"status": "error", "message": "'circles' must be a list of objects with x, y, r."})
             circles = [Circle.model_validate(c) for c in raw_circles]
+            if action == "optimize":
+                steps = int(payload.get("max_iterations", 150))
+                optimized = CirclePackingEvaluator.optimize_packing(circles, max_iterations=steps)
+                eval_res = CirclePackingEvaluator.evaluate(optimized)
+                return json.dumps({
+                    "status": "success",
+                    "optimized_circles": [c.model_dump() for c in optimized],
+                    "result": eval_res.model_dump(mode="json"),
+                })
             eval_res = CirclePackingEvaluator.evaluate(circles)
             return json.dumps({"status": "success", "result": eval_res.model_dump(mode="json")})
 
@@ -294,6 +311,10 @@ def create_mcp_server(
             return json.dumps({"status": "success", "result": eval_res.model_dump(mode="json")})
 
         if prob == "lasso":
+            if "instance_runtimes_sec" in payload:
+                runtimes = [float(t) for t in payload["instance_runtimes_sec"]]
+                r_search = LassoEvaluator.calculate_geometric_mean_search_score(runtimes)
+                return json.dumps({"status": "success", "r_search": r_search, "instances_count": len(runtimes)})
             x_rows = payload.get("x_rows", [])
             y = payload.get("y", [])
             lambdas = payload.get("lambdas", [])

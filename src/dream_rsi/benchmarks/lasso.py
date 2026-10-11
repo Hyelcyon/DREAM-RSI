@@ -128,3 +128,15 @@ class LassoEvaluator:
             search_score=float(score),
             error=None if is_correct else f"Objective tolerance exceeded by {max_viol:.2e}",
         )
+
+    @staticmethod
+    def calculate_geometric_mean_search_score(instance_runtimes_sec: list[float]) -> float:
+        """Computes paper Equation: R_search = (prod_{i in I} t_i)^(-1 / |I|)."""
+        if not instance_runtimes_sec:
+            return 0.0
+        n = len(instance_runtimes_sec)
+        # Prevent division by zero and negative timings
+        safe_times = [max(1e-9, float(t)) for t in instance_runtimes_sec]
+        # Compute in log space to avoid numerical underflow/overflow: exp(-1/n * sum(log(t_i)))
+        log_sum = sum(math.log(t) for t in safe_times)
+        return float(math.exp(-log_sum / n))
