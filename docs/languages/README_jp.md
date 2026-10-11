@@ -8,12 +8,12 @@
 
 **過去の探索木を仮想環境としてシミュレーションし、トークン消費ゼロで探索ポリシーを最適化します。**
 
-[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](../mcp-contracts.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
+[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat)](../mcp-contracts.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
 [クイックスタート](#クイックスタート) · [動作原理](#動作原理) · [MCP ツール](#mcp-ツール) · [数理モデル](#数理モデル) · [開発と検証](#開発と検証) · [引用](#引用)
 

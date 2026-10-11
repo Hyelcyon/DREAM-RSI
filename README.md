@@ -8,12 +8,12 @@
 
 **Record exploration attempts. Replay trajectories offline. Optimize search policy allocations.**
 
-[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](docs/mcp-contracts.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
+[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat)](docs/mcp-contracts.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
 [Quick start](#quick-start) · [How DREAM-RSI works](#how-dream-rsi-works) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Architecture & Safety](#architecture-and-safety-invariants) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
 

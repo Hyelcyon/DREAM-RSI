@@ -8,12 +8,12 @@
 
 **탐색 시도를 기록하고, 오프라인으로 궤적을 리플레이하며, 검색 정책 할당을 최적화합니다.**
 
-[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](../mcp-contracts.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
+[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat)](../mcp-contracts.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
 [빠른 시작](#빠른-시작) · [작동 원리](#작동-원리) · [MCP 도구 목록](#mcp-도구-목록) · [수학적 정식화](#수학적-정식화) · [아키텍처 및 안전성](#아키텍처-및-안전-불변식) · [개발 및 검증](#개발-및-검증) · [FAQ](#faq) · [인용](#인용)
 

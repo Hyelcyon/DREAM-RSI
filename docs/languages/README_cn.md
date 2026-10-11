@@ -8,12 +8,12 @@
 
 **将历史探索树模拟为虚拟环境，零外部 Token 消耗实现离线策略优化。**
 
-[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat-square&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
-[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat-square&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
-[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat-square&logo=python&logoColor=white)](https://python.org)
-[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat-square)](../mcp-contracts.md)
-[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat-square)](../../LICENSE)
-[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat-square)](https://arxiv.org/abs/2609.14858)
+[![Release](https://img.shields.io/github/v/release/Hyelcyon/DREAM-RSI?style=flat&color=cb3837)](https://github.com/Hyelcyon/DREAM-RSI/releases)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hyelcyon/DREAM-RSI/ci.yml?branch=main&style=flat&label=CI)](https://github.com/Hyelcyon/DREAM-RSI/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![MCP Protocol](https://img.shields.io/badge/MCP-11_tools_%7C_3_resources-5c4ee5?style=flat)](../mcp-contracts.md)
+[![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
+[![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
 [快速上手](#快速上手) · [工作原理](#工作原理) · [MCP 工具](#mcp-工具) · [数理模型](#数理模型) · [开发与验证](#开发与验证) · [引用](#引用)
 
