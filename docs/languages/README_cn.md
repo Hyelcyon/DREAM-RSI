@@ -34,7 +34,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
-[快速上手](#快速上手) · [工作原理](#工作原理) · [MCP 工具](#mcp-工具) · [数理模型](#数理模型) · [开发与验证](#开发与验证) · [引用](#引用)
+[快速上手](#快速上手) · [MCP 工具](#mcp-工具) · [数理模型](#数理模型) · [开发与验证](#开发与验证) · [引用](#引用)
 
 <code>uv run dream-rsi</code>
 

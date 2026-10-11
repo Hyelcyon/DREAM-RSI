@@ -34,7 +34,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
-[빠른 시작](#빠른-시작) · [작동 원리](#작동-원리) · [MCP 도구 목록](#mcp-도구-목록) · [수학적 정식화](#수학적-정식화) · [아키텍처 및 안전성](#아키텍처-및-안전-불변식) · [개발 및 검증](#개발-및-검증) · [FAQ](#faq) · [인용](#인용)
+[빠른 시작](#빠른-시작) · [MCP 도구 목록](#mcp-도구-목록) · [수학적 정식화](#수학적-정식화) · [아키텍처 및 안전성](#아키텍처-및-안전-불변식) · [개발 및 검증](#개발-및-검증) · [FAQ](#faq) · [인용](#인용)
 
 <code>uv run dream-rsi</code>
 
@@ -128,71 +128,6 @@ uv run dream-rsi
 ```
 
 모든 진단 로그는 표준 에러(stderr)로 출력되어 STDIO를 통한 JSON-RPC 전송의 무결성을 보장합니다.
-
----
-
-## 작동 원리
-
-```mermaid
-flowchart TD
-    subgraph Online["1. 온라인 탐색 (Online Exploration)"]
-        A[LLM 에이전트] -->|1. 코드 / 가설 생성| B[실행 및 검증]
-        B -->|2. 노드 상태 + 오류 분류| C[(JsonFileHistoryStore)]
-    end
-
-    subgraph Offline["2. 오프라인 리플레이 ('Dreaming')"]
-        C -->|3. 탐색 DAG 로드| D[ReplaySimulator]
-        E[후보 정책군 / 베타 스윕] -->|4. 포트폴리오 스텝 모의 실행| D
-        D -->|5. 재구성된 궤적| F[TreeEvaluator]
-    end
-
-    subgraph Optimization["3. 정책 최적화 및 적응 (Optimization)"]
-        F -->|6. 실증 AUC 및 보상 연산| G[PolicyOptimizer]
-        G -->|7. 파레토 프론티어 산출| H[베타 결정 및 그리드 스케줄링]
-    end
-
-    subgraph Redeploy["4. 차기 온라인 탐색 실행"]
-        H -->|8. 할당된 W 워커, R 탐침 깊이| A
-    end
-```
-
-### 재귀적 자기 개선 루프 (Recursive Self-Improvement Loop)
-
-DREAM-RSI는 기본 LLM의 가중치 수정이나 정책 최적화 단계에서의 추가 외부 LLM 호출 없이, 탐색 전략 자체를 최적화합니다:
-
-```mermaid
-flowchart TD
-    NodeOnline["<b>온라인 탐색 (Online Discovery)</b><br/>현재 정책으로 탐색 트리 확장"]
-    NodeSave["<b>탐색 트리 DAG (JsonFileHistoryStore)</b><br/>깊이, 점수, 유효성, 오류 분류(fail_class) 저장"]
-    NodeReplay["<b>리플레이 시뮬레이션 ('정확한 세계 모델')</b><br/>과거 기록 위에서 컴파일러 재실행 없이 의사결정 모의"]
-    NodeFrontier["<b>파레토 프론티어 정책 최적화</b><br/>탐색 폭(W)과 활용 강도(beta)의 다목적 트레이드오프 분석"]
-    NodePlan["<b>적응형 자원 할당 계획 (W, R)</b><br/>최적화된 파라미터로 차기 온라인 에피소드 스케줄링"]
-
-    NodeOnline -->|"dream_history_save_node"| NodeSave
-    NodeSave -->|"dream_replay_run"| NodeReplay
-    NodeReplay -->|"dream_replay_get_frontier"| NodeFrontier
-    NodeFrontier -->|"dream_policy_plan_grid"| NodePlan
-    NodePlan -.->|"차기 에피소드 적용"| NodeOnline
-```
-
-### 모듈 구조 및 실행 단계
-
-1. **탐색 트리 저장소 (`src/dream_rsi/storage/`, `src/dream_rsi/core/models.py`)**
-   - 기록되는 노드는 `node_id`, `parent_id`, `branch_id`, `attempt_index`를 유지합니다.
-   - 각 노드는 실행 결과인 `Observation` 객체를 포함하며 상태를 분류합니다 (`syntax_error`, `runtime_error`, `shape_mismatch`, `ok` 등).
-   - `JsonFileHistoryStore`는 순환이 없는 DAG 위상 구조를 검증하고 디스크 원자적 저장을 보장합니다.
-
-2. **리플레이 시뮬레이션 (`src/dream_rsi/replay/`)**
-   - `QuestionAPI`는 과거 탐색 트리를 자원 예산과 병렬 제한이 있는 상태형 문제 환경으로 추상화합니다.
-   - `ReplaySimulator`는 실제 컴파일러나 인터프리터를 재실행하지 않고, 검증된 노드 궤적을 순회하며 다양한 정책을 평가합니다.
-
-3. **정책 평가 및 신호 감지 (`src/dream_rsi/core/signals.py`, `src/dream_rsi/core/evaluator.py`)**
-   - 궤적 신호는 브랜치를 완전 실패, 정체, 또는 유망한 앵커 노드로 분류합니다.
-   - `TreeEvaluator`는 도달한 최고 점수, 순차적 의사결정 라운드 수, 병렬화 패널티를 고려하여 에피소드를 평가합니다.
-
-4. **정책 최적화 (`src/dream_rsi/optimizer/`)**
-   - `DynamicPortfolioPolicy`는 활용 계수 $\beta \in [0, 1]$를 조절하여 신규 루트 탐색과 기존 고득점 브랜치 정제 간의 워커 할당을 배분합니다.
-   - `PolicyOptimizer`는 $\beta$ 스윕을 통해 파레토 프론티어를 도출하고, 다음 탐색 에피소드를 위한 워커 수($W$)와 탐침 깊이($R$)를 계획합니다.
 
 ---
 

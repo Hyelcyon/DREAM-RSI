@@ -34,7 +34,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
-[Quick start](#quick-start) · [How DREAM-RSI works](#how-dream-rsi-works) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Architecture & Safety](#architecture-and-safety-invariants) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
+[Quick start](#quick-start) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Architecture & Safety](#architecture-and-safety-invariants) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
 
 <code>uv run dream-rsi</code>
 
@@ -128,71 +128,6 @@ uv run dream-rsi
 ```
 
 Diagnostic logs route strictly to standard error (stderr), keeping standard input and output clean for JSON-RPC transport frames.
-
----
-
-## How DREAM-RSI Works
-
-```mermaid
-flowchart TD
-    subgraph Online["1. Online Exploration"]
-        A[LLM Agent] -->|1. Generate Code / Hypotheses| B[Execute & Validate]
-        B -->|2. Node State + Error Taxonomy| C[(JsonFileHistoryStore)]
-    end
-
-    subgraph Offline["2. Offline Replay ('Dreaming')"]
-        C -->|3. Load Discovery DAG| D[ReplaySimulator]
-        E[Candidate Policies / Beta Sweeps] -->|4. Simulated Portfolio Steps| D
-        D -->|5. Reconstructed Trajectories| F[TreeEvaluator]
-    end
-
-    subgraph Optimization["3. Policy Optimization & Adaptation"]
-        F -->|6. Empirical AUC & Score| G[PolicyOptimizer]
-        G -->|7. Compute Pareto Frontier| H[Select Beta & Schedule Grid]
-    end
-
-    subgraph Redeploy["4. Next Online Episode"]
-        H -->|8. Allocated W Workers, R Depth| A
-    end
-```
-
-### Recursive Self-Improvement Loop
-
-The framework optimizes search strategies without modifying base model weights or prompting external LLMs during policy tuning:
-
-```mermaid
-flowchart TD
-    NodeOnline["<b>Online Discovery (LLM Agent Execution)</b><br/>Expands search tree under current policy"]
-    NodeSave["<b>Discovery Tree DAG (JsonFileHistoryStore)</b><br/>Stores depth, score, validity, and fail_class"]
-    NodeReplay["<b>Replay Simulation ('Exact World Model')</b><br/>Simulates decisions over historical tree without code execution"]
-    NodeFrontier["<b>Pareto Frontier Optimization</b><br/>Evaluates exploration breadth (W) vs exploitation (beta)"]
-    NodePlan["<b>Adaptive Resource Allocation (W, R)</b><br/>Schedules next online cycle with optimized parameters"]
-
-    NodeOnline -->|"dream_history_save_node"| NodeSave
-    NodeSave -->|"dream_replay_run"| NodeReplay
-    NodeReplay -->|"dream_replay_get_frontier"| NodeFrontier
-    NodeFrontier -->|"dream_policy_plan_grid"| NodePlan
-    NodePlan -.->|"Apply to next episode"| NodeOnline
-```
-
-### Module Structure & Operational Stages
-
-1. **Discovery Tree Storage (`src/dream_rsi/storage/`, `src/dream_rsi/core/models.py`)**
-   - Recorded nodes capture `node_id`, `parent_id`, `branch_id`, and `attempt_index`.
-   - Each node contains an `Observation` struct classifying outcomes: `valid`, `score`, and `fail_class` (e.g., `syntax_error`, `runtime_error`, `shape_mismatch`, `ok`).
-   - `JsonFileHistoryStore` maintains topological DAG invariants, ensuring cycle-free trees and atomic disk writes.
-
-2. **Replay Simulation (`src/dream_rsi/replay/`)**
-   - `QuestionAPI` encapsulates historical trees into stateful question environments with budget and parallelism caps.
-   - `ReplaySimulator` evaluates policies by traversing verified branches and terminal states without re-executing actual compiler or runtime code.
-
-3. **Policy Evaluation & Signals (`src/dream_rsi/core/signals.py`, `src/dream_rsi/core/evaluator.py`)**
-   - Trajectory signals classify branches as hard failed, stagnant, or promising anchor nodes.
-   - `TreeEvaluator` scores replay episodes balancing maximum achieved score, sequential decision rounds, and parallelism penalties.
-
-4. **Policy Optimization (`src/dream_rsi/optimizer/`)**
-   - `DynamicPortfolioPolicy` modulates exploitation factor $\beta \in [0, 1]$ to distribute workers between unopened roots and repairable high-scoring frontiers.
-   - `PolicyOptimizer` sweeps $\beta$ to identify the Pareto frontier and plans deterministic worker width ($W$) and probe depth ($R$) for future tasks.
 
 ---
 
