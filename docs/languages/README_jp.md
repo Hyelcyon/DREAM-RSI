@@ -89,6 +89,9 @@ uv run dream-rsi
 | `dream_replay_get_frontier` | パレート・フロンティアを算出 |
 | `dream_policy_compare` | 候補ポリシーとベースライン・ポリシーを比較 |
 | `dream_policy_plan_grid` | 次の試行のための最適な探索幅 $W$ と深さ $R$ を計画 |
+| `dream_policy_select_beta` | 履歴トレンドとフロンティアに基づく次期ベータ適応を計算 |
+| `dream_benchmark_evaluate` | 科学的発見ベンチマーク問題で候補解を検証 |
+| `dream_benchmark_create_tree` | ベンチマーク検証用の仮想探索木を生成 |
 | `dream_status` | エンジンの状態と保存ディレクトリの整合性を確認 |
 
 ---

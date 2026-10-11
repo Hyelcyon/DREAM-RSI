@@ -89,6 +89,9 @@ uv run dream-rsi
 | `dream_replay_get_frontier` | 评估所有历史树并生成帕累托前沿 |
 | `dream_policy_compare` | 对比候选策略与基线策略的表现 |
 | `dream_policy_plan_grid` | 确定性规划下一次任务的搜索广度 $W$ 与深度 $R$ |
+| `dream_policy_select_beta` | 基于历史趋势与前沿计算下周期 Beta 自适应值 |
+| `dream_benchmark_evaluate` | 在科学发现基准任务上验证候选解 |
+| `dream_benchmark_create_tree` | 实例化基准测试发现树并存入本地存储 |
 | `dream_status` | 检查引擎运行状态与存储完整性 |
 
 ---
