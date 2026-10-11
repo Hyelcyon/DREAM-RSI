@@ -202,6 +202,11 @@ class HistorySummaryItem(BaseModel):
     best_score: float = 0.0
     max_depth: int = 0
     node_count: int = 0
+    early_improvements: int = 0
+    stalled_deep_refinements: int = 0
+    late_high_gains: int = 0
+    plateaued_branches: int = 0
+    hard_failures: int = 0
 
 
 def _default_history() -> list[HistorySummaryItem]:

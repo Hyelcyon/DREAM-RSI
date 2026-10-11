@@ -21,6 +21,7 @@ from dream_rsi.core.models import (
     HistorySummaryItem,
     TreeNode,
 )
+from dream_rsi.core.signals import branch_failed_hard
 from dream_rsi.optimizer.optimizer import PolicyOptimizer
 from dream_rsi.optimizer.policy import DynamicPortfolioPolicy, OptimalPolicy
 from dream_rsi.replay.simulator import ReplaySimulator
@@ -247,13 +248,47 @@ def create_mcp_server(
             history_summary: list[HistorySummaryItem] = []
             for item in manifest.trees:
                 tree = store.get_tree(item.tree_id)
-                max_d = max([n.depth for n in tree.nodes.values()]) if tree and tree.nodes else 0
+                if not tree or not tree.nodes:
+                    continue
+                max_d = max(n.depth for n in tree.nodes.values())
+                early_imp = 0
+                stalled_deep = 0
+                late_gains = 0
+                hard_fails = 0
+                plateaued = 0
+
+                for b_id, node_ids in tree.branches.items():
+                    if b_id == 0:
+                        continue
+                    b_nodes = [tree.nodes[nid] for nid in node_ids if nid in tree.nodes]
+                    b_nodes.sort(key=lambda n: n.depth)
+                    b_scores = [n.observation.score for n in b_nodes if n.observation.evaluated]
+                    if not b_scores:
+                        continue
+                    if len(b_nodes) >= 2 and b_nodes[1].observation.delta_vs_parent > 0:
+                        early_imp += 1
+                    if len(b_nodes) >= 3:
+                        deep_deltas = [n.observation.delta_vs_parent for n in b_nodes[2:]]
+                        if all(d <= 0 for d in deep_deltas):
+                            stalled_deep += 1
+                        if any(d > 0.05 for d in deep_deltas):
+                            late_gains += 1
+                    if any(branch_failed_hard(n.observation) for n in b_nodes):
+                        hard_fails += 1
+                    if len(b_scores) >= 3 and abs(b_scores[-1] - b_scores[-2]) < 1e-4:
+                        plateaued += 1
+
                 history_summary.append(
                     HistorySummaryItem(
                         tree_id=item.tree_id,
                         best_score=item.best_score,
                         max_depth=max_d,
                         node_count=item.node_count,
+                        early_improvements=early_imp,
+                        stalled_deep_refinements=stalled_deep,
+                        late_high_gains=late_gains,
+                        plateaued_branches=plateaued,
+                        hard_failures=hard_fails,
                     )
                 )
             ctx = GridPlanningContext(history=history_summary)

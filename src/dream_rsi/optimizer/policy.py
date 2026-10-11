@@ -206,10 +206,57 @@ class OptimalPolicy:
             return GridPlan(
                 branch_count=w,
                 refine_count=r,
-                reason="Cold start: initialized width to worker cap and conservative depth.",
+                reason="Conflicting or insufficient history: returned explicit conservative bootstrap plan.",
             )
 
         avg_depth = sum(t.max_depth for t in context.history) / total_trees
+        total_early_imp = sum(t.early_improvements for t in context.history)
+        total_stalled_deep = sum(t.stalled_deep_refinements for t in context.history)
+        total_late_gains = sum(t.late_high_gains for t in context.history)
+        total_hard_fails = sum(t.hard_failures for t in context.history)
+        total_plateaued = sum(t.plateaued_branches for t in context.history)
+
+        # Rule 1: Many distinct roots improve early while deeper refinements stall
+        if total_early_imp > 0 and total_stalled_deep >= total_early_imp:
+            w = min(hard_max_w, max(2, int(round(w_cap * 1.3))))
+            r = max(2, min(hard_max_r, int(round(avg_depth * 0.75))))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="Many distinct roots improved early while deeper refinements stalled: increased width W and held depth R.",
+            )
+
+        # Rule 2: High gains arrive late on a small, repeatable set of directions
+        if total_late_gains > 0 and total_late_gains >= total_early_imp:
+            w = min(hard_max_w, max(2, int(round(w_cap * 0.8))))
+            r = min(hard_max_r, max(4, int(round(avg_depth * 1.5))))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="High gains arrived late on a repeatable set of directions: reduced width W and increased depth R.",
+            )
+
+        # Rule 3: Repeated hard, unrecoverable failures or strongly redundant directions
+        if total_hard_fails >= 2:
+            w = max(2, min(hard_max_w, int(round(w_cap * 0.7))))
+            r = max(2, min(hard_max_r, int(round(avg_depth * 0.7))))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="Repeated hard unrecoverable failures detected: reduced width W and depth R conservatively.",
+            )
+
+        # Rule 4: All explored directions plateau after sufficient depth while meaningful directions remain
+        if total_plateaued > 0 and total_plateaued >= total_early_imp:
+            w = min(hard_max_w, max(4, int(round(w_cap * 1.2))))
+            r = max(2, min(hard_max_r, int(round(avg_depth * 0.8))))
+            return GridPlan(
+                branch_count=w,
+                refine_count=r,
+                reason="Explored directions plateaued after depth: increased width W to uncover new directions.",
+            )
+
+        # Rule 5: Macro success ratio calibration when granular branch signals are absent
         success_count = sum(1 for t in context.history if t.best_score > 0.0)
         success_ratio = success_count / total_trees
 
@@ -231,6 +278,7 @@ class OptimalPolicy:
                 reason="Low early success rate: expanded hypothesis width W to sample diverse roots.",
             )
 
+        # Rule 6: Balanced default empirical calibration
         w = min(hard_max_w, max(2, w_cap))
         r = min(hard_max_r, max(3, int(round(avg_depth))))
         return GridPlan(

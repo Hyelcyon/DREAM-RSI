@@ -7,7 +7,7 @@ from dream_rsi.core.models import (
     TreeNode,
 )
 from dream_rsi.optimizer.optimizer import PolicyOptimizer
-from dream_rsi.optimizer.policy import DynamicPortfolioPolicy
+from dream_rsi.optimizer.policy import DynamicPortfolioPolicy, OptimalPolicy
 from dream_rsi.replay.question import QuestionAPI
 
 
@@ -74,6 +74,56 @@ def test_plan_grid_deterministic() -> None:
     assert plan1.branch_count <= 32
     assert plan1.refine_count <= 20
     assert "High success history" in plan1.reason
+
+
+def test_plan_grid_paper_rules() -> None:
+    # Rule 1: Early improvements while deep stall -> widen width, hold/reduce depth
+    ctx_widen = GridPlanningContext(
+        history=[
+            HistorySummaryItem(
+                tree_id="t_widen",
+                max_depth=6,
+                early_improvements=4,
+                stalled_deep_refinements=4,
+            )
+        ],
+        worker_cap=10,
+    )
+    plan_widen = OptimalPolicy.plan_grid(ctx_widen)
+    assert plan_widen.branch_count > 10
+    assert "increased width W and held depth R" in plan_widen.reason
+
+    # Rule 2: Late high gains -> deepen depth, reduce width
+    ctx_deepen = GridPlanningContext(
+        history=[
+            HistorySummaryItem(
+                tree_id="t_deepen",
+                max_depth=6,
+                early_improvements=1,
+                late_high_gains=3,
+            )
+        ],
+        worker_cap=10,
+    )
+    plan_deepen = OptimalPolicy.plan_grid(ctx_deepen)
+    assert plan_deepen.refine_count >= 8
+    assert "increased depth R" in plan_deepen.reason
+
+    # Rule 3: Repeated hard unrecoverable failures -> reduce both conservatively
+    ctx_fails = GridPlanningContext(
+        history=[
+            HistorySummaryItem(
+                tree_id="t_fail",
+                max_depth=5,
+                hard_failures=3,
+            )
+        ],
+        worker_cap=10,
+    )
+    plan_fails = OptimalPolicy.plan_grid(ctx_fails)
+    assert plan_fails.branch_count < 10
+    assert "Repeated hard unrecoverable failures" in plan_fails.reason
+
 
 
 def test_policy_optimizer_monotonicity_guarantee(complex_tree: DiscoveryTree) -> None:
