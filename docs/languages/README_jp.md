@@ -34,7 +34,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](../../LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
-[クイックスタート](#クイックスタート) · [MCP ツール](#mcp-ツール) · [数理モデル](#数理モデル) · [開発と検証](#開発と検証) · [引用](#引用)
+[クイックスタート](#クイックスタート) · [MCP ツール](#mcp-ツール) · [数理モデル](#数理モデル) · [開発と検証](#開発と検証) · [FAQ](#faq) · [引用](#引用)
 
 <code>uv run dream-rsi</code>
 
@@ -44,12 +44,14 @@
 
 ---
 
-**DREAM-RSI** は、研究論文 *Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems* (arXiv: 2609.14858) に基づく、独立したクリーンルーム Python 実装です。標準的な Model Context Protocol (MCP) STDIO ワークフローを介して、自律型 AI エージェントに自己改善探索ポリシーの最適化を提供します。
+**DREAM-RSI** は、研究論文 *Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems* (arXiv: 2609.14858) に基づく Python 検索ポリシー最適化エンジンであり、Model Context Protocol (MCP) STDIO サーバーとして動作します。
 
-- **外部トークン消費ゼロ**: 蓄積された探索木を仮想リプレイ環境として活用し、外部 LLM の API 呼び出しなしでポリシーを改善します。
-- **位相的整合性の保証**: 循環参照の検出とアトミックなファイル書き込みにより、有向非巡回グラフ (DAG) の厳密な整合性を保護します。
-- **動的ポートフォリオ最適化**: 幅広い仮説分岐 ($W$) と反復的な深層洗練 ($R$) の間のパレート・フロンティアを計算します。
-- **決定論的グリッド計画**: 過去の試行実績に基づき、最適なワーカー割り当てを推薦します。
+自律型エージェントがアルゴリズム合成、数理最適化、システムコード作成を探索する際、膨大な試行錯誤の木が生成されます。新しい探索ポリシーをオンラインで直接評価することは、継続的なトークン消費と環境との対話を要求します。DREAM-RSI は**オンラインの探索木拡張**と**オフラインのポリシー評価**を分離します:
+
+1. **仮想シミュレータとしての探索木**: 過去の実行トレースを実行結果および検証シグナルを含む有向非巡回グラフ (DAG) としてモデル化します。リプレイエンジンは外部 LLM の呼び出しなしで過去の探索木をシミュレーション環境として扱います。
+2. **オフラインリプレイ ("Dreaming")**: 代替探索ポリシーがグラフ上で過去の状態・行動遷移を再実行し、様々な探索・活用バランス ($\beta$) のパフォーマンスをシミュレーションします。
+3. **多目的フロンティア評価**: パレート効率性指標を使用して、探索の幅 ($W$) と洗練の深さ ($R$) の間の実証的トレードオフを計算します。
+4. **再帰的な探索改善**: オフラインリプレイによって推奨されたポリシーが次のオンライン探索ラウンドをスケジュールし、将来のリプレイサイクルのためにより豊かな探索木を蓄積します。
 
 ---
 
@@ -121,6 +123,25 @@ uv run dream-rsi
 
 ---
 
+## 数理モデル
+
+### 探索と活用のバランス ($\beta$)
+
+動的ポートフォリオポリシーは、候補の品質スコアと活用係数 $\beta \in [0, 1]$ に基づいて行動をサンプリングします:
+
+$$P(\text{refine} \mid \text{node}_i) \propto \exp\left(\frac{\beta \cdot \text{score}_i}{\tau}\right)$$
+
+- $\beta \to 0$: 未検証の分岐に対する多様な探索を重視します。
+- $\beta \to 1$: 高スコアの候補ノードを深く洗練することに計算を集中させます。
+
+### 探索グリッドの最適化 $(W, R)$
+
+総ワーカー予算 $B$ が与えられたとき、分岐幅 $W$ と洗練深度 $R$ の最適な配分を算出します:
+
+$$W \cdot R \le B, \quad \max_{W, R} \mathbb{E}\left[\max_{i \le W} S_i^{(R)}\right]$$
+
+---
+
 ## 開発と検証
 
 ```bash
@@ -128,6 +149,47 @@ uv sync
 uv run pytest
 uv run pyright
 uv run python scripts/verify_mcp.py
+```
+
+---
+
+## FAQ
+
+<details>
+<summary><strong>どのエージェントで利用できますか？</strong></summary>
+
+STDIO 経由の Model Context Protocol (MCP) をサポートする任意のエージェント (Claude Code、Google Antigravity、Cursor、OpenAI Codex など) で利用可能です。
+</details>
+
+<details>
+<summary><strong>オフラインリプレイに外部 LLM 呼び出しやネットワークアクセスは必要ですか？</strong></summary>
+
+いいえ。オンラインセッション中に記録された過去の実行グラフと決定論的検証オラクルを使用するため、外部ネットワーク要求や LLM プロンプトなしにポリシーを評価します。
+</details>
+
+<details>
+<summary><strong>探索木はどのように保存されますか？</strong></summary>
+
+`DREAM_RSI_STORE_DIR` または `data/trees/` 配下のローカル JSON ファイルとして保存されます。
+</details>
+
+<details>
+<summary><strong>グリッド計画における W と R は何を表していますか？</strong></summary>
+
+$W$ は並行探索ワーカー数または仮説分岐数を表し、$R$ は分岐ごとの洗練深度または試行予算を表します。グリッドプランナーは総予算 $B$ の下でこのトレードオフを最適化します。
+</details>
+
+## 引用
+
+研究またはエージェントのワークフローにおいて DREAM-RSI を引用する場合は、以下の原著論文を参照してください:
+
+```bibtex
+@article{zheng2026dreamrsi,
+  title={Dreaming While Exploring: Recursive Self-Improvement in LLM-Based Discovery Systems},
+  author={Zheng, Kid and collaborators},
+  journal={arXiv preprint arXiv:2609.14858},
+  year={2026}
+}
 ```
 
 ---

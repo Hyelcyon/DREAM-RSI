@@ -34,7 +34,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-f4c430?style=flat)](LICENSE)
 [![arXiv](https://img.shields.io/badge/arXiv-2609.14858-B31B1B?style=flat)](https://arxiv.org/abs/2609.14858)
 
-[Quick start](#quick-start) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Architecture & Safety](#architecture-and-safety-invariants) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
+[Quick start](#quick-start) · [MCP Tools](#mcp-tools) · [Mathematical Formulation](#mathematical-formulation) · [Verification](#development--verification) · [FAQ](#faq) · [Citation](#citation)
 
 <code>uv run dream-rsi</code>
 
@@ -188,14 +188,6 @@ $$W \cdot R \le B, \quad \max_{W, R} \mathbb{E}\left[\max_{i \le W} S_i^{(R)}\ri
 
 ---
 
-## Architecture and Safety Invariants
-
-- **Offline Boundary**: Operates entirely offline with zero outgoing network requests or telemetry. Storage operations are confined strictly to the configured directory (`DREAM_RSI_STORE_DIR`).
-- **Path Traversal Containment**: Directory traversal attempts (`../`) are sanitized and rejected with explicit containment errors.
-- **Atomic Persistence**: Discovery tree mutations use atomic write patterns (`write to temp + atomic replace`) to ensure durability against unexpected interruptions.
-- **Strict Typing**: Codebase adheres to Pyright strict mode without `Any` overrides or dynamic escaping.
-
----
 
 ## Development & Verification
 
