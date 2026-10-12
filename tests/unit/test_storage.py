@@ -89,3 +89,33 @@ def test_storage_manifest_null_and_corrupt_resilience(tmp_path: Path) -> None:
     assert manifest.trees[0].tree_id == "null_tree"
     assert manifest.trees[0].created_at == 0.0
     assert manifest.trees[0].best_score == 0.0
+
+
+def test_storage_save_tree_indent_and_compact(tmp_path: Path) -> None:
+    store = JsonFileHistoryStore(base_dir=tmp_path)
+    root = TreeNode(
+        node_id="r1",
+        observation=Observation(branch=0, attempt=0, score=0.7, evaluated=True),
+    )
+    tree_indented = DiscoveryTree(tree_id="tree_indented", root_id="r1")
+    tree_indented.add_node(root)
+    path_ind = store.save_tree(tree_indented, indent=2)
+
+    content_ind = path_ind.read_text(encoding="utf-8")
+    assert "\n" in content_ind
+    assert "  " in content_ind
+
+    tree_compact = DiscoveryTree(tree_id="tree_compact", root_id="r1")
+    tree_compact.add_node(root)
+    path_cmp = store.save_tree(tree_compact, indent=None)
+
+    content_cmp = path_cmp.read_text(encoding="utf-8")
+    assert "\n" not in content_cmp
+    assert len(content_cmp) < len(content_ind)
+
+    loaded_ind = store.get_tree("tree_indented")
+    loaded_cmp = store.get_tree("tree_compact")
+    assert loaded_ind is not None
+    assert loaded_cmp is not None
+    assert loaded_ind.nodes == loaded_cmp.nodes
+    assert loaded_ind.get_best_score() == loaded_cmp.get_best_score()
