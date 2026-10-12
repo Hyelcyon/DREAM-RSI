@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections import deque
+
 from pydantic import BaseModel
 
 from dream_rsi.core.evaluator import ReplayEvaluator
@@ -73,11 +75,50 @@ class PolicyOptimizer:
     @classmethod
     def filter_non_dominated(cls, points: list[FrontierPoint]) -> list[FrontierPoint]:
         """Extracts strictly non-dominated points on the empirical Pareto frontier."""
+        if len(points) <= 1:
+            return list(points)
+
+        pts = sorted(
+            points,
+            key=lambda x: (x.mean_replay_score, x.mean_pareto_reward),
+            reverse=True,
+        )
+        n = len(pts)
+
+        max_y_strict = float("-inf")
+        left = 0
+        right = 0
+        deq: deque[tuple[int, float]] = deque()
         non_dominated: list[FrontierPoint] = []
-        for p in points:
-            if not any(cls.is_dominated(p, other) for other in points if other is not p):
-                non_dominated.append(p)
-        non_dominated.sort(key=lambda x: (x.mean_replay_score, x.mean_pareto_reward), reverse=True)
+
+        for i in range(n):
+            curr = pts[i]
+            curr_x = curr.mean_replay_score
+            curr_y = curr.mean_pareto_reward
+
+            while left < n and pts[left].mean_replay_score > curr_x + 1e-6:
+                if pts[left].mean_pareto_reward > max_y_strict:
+                    max_y_strict = pts[left].mean_pareto_reward
+                left += 1
+
+            if max_y_strict >= curr_y - 1e-9:
+                continue
+
+            while right < n and pts[right].mean_replay_score >= curr_x - 1e-9:
+                val = pts[right].mean_pareto_reward
+                while deq and deq[-1][1] <= val:
+                    deq.pop()
+                deq.append((right, val))
+                right += 1
+
+            while deq and deq[0][0] < left:
+                deq.popleft()
+
+            if deq and deq[0][1] > curr_y + 1e-6:
+                continue
+
+            non_dominated.append(curr)
+
         return non_dominated
 
     def evaluate_frontier(
