@@ -32,9 +32,14 @@ class OptimalPolicy:
             "reserve_threshold": float(0.1 * (1.0 - beta)),
         }
 
-    def reconstruct_trajectories(self, question: QuestionAPI) -> dict[int, BranchTrajectory]:
+    def reconstruct_trajectories(
+        self,
+        question: QuestionAPI,
+        observed: dict[str, TreeNode] | None = None,
+    ) -> dict[int, BranchTrajectory]:
         """Reconstructs ordered prefix trajectories for each branch observed so far."""
-        observed = question.observed()
+        if observed is None:
+            observed = question.observed()
         branches: dict[int, list[TreeNode]] = {}
         for node in observed.values():
             if node.is_root:
@@ -68,7 +73,7 @@ class OptimalPolicy:
                 root_id = nid
                 break
 
-        trajectories = self.reconstruct_trajectories(question)
+        trajectories = self.reconstruct_trajectories(question, observed=observed)
         patience = int(self.schedule["patience"])
 
         closed_branches: set[int] = set()

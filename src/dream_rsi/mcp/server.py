@@ -252,10 +252,9 @@ def create_mcp_server(
         if context is not None:
             ctx = GridPlanningContext.model_validate(context)
         else:
-            manifest = store.get_manifest()
             history_summary: list[HistorySummaryItem] = []
-            for item in manifest.trees:
-                tree = store.get_tree(item.tree_id)
+            for tid in store.list_trees():
+                tree = store.get_tree(tid)
                 if not tree or not tree.nodes:
                     continue
                 max_d = max(n.depth for n in tree.nodes.values())
@@ -288,10 +287,10 @@ def create_mcp_server(
 
                 history_summary.append(
                     HistorySummaryItem(
-                        tree_id=item.tree_id,
-                        best_score=item.best_score,
+                        tree_id=tree.tree_id,
+                        best_score=tree.get_best_score(),
                         max_depth=max_d,
-                        node_count=item.node_count,
+                        node_count=len(tree.nodes),
                         early_improvements=early_imp,
                         stalled_deep_refinements=stalled_deep,
                         late_high_gains=late_gains,

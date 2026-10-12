@@ -46,23 +46,29 @@ class ReplayEvaluator:
         if not trajectory_curve:
             return 0.0
 
-        sorted_points = sorted(trajectory_curve, key=lambda x: x[0])
-        if sorted_points[0][0] > 0:
-            sorted_points.insert(0, (0, 0.0))
+        budget = max(1, max_budget)
+        is_sorted = True
+        for i in range(1, len(trajectory_curve)):
+            if trajectory_curve[i][0] < trajectory_curve[i - 1][0]:
+                is_sorted = False
+                break
 
-        last_probes, last_score = sorted_points[-1]
-        if last_probes < max_budget:
-            sorted_points.append((max_budget, last_score))
+        points = trajectory_curve if is_sorted else sorted(trajectory_curve, key=lambda x: x[0])
 
         total_area = 0.0
-        for i in range(1, len(sorted_points)):
-            p_prev, s_prev = sorted_points[i - 1]
-            p_curr, _ = sorted_points[i]
-            delta_p = p_curr - p_prev
-            total_area += s_prev * delta_p
+        p_prev = 0
+        s_prev = 0.0
 
-        normalized_auc = total_area / max(1, max_budget)
-        return float(normalized_auc)
+        for p_curr, s_curr in points:
+            if p_curr > p_prev:
+                total_area += s_prev * (p_curr - p_prev)
+                p_prev = p_curr
+            s_prev = s_curr
+
+        if p_prev < budget:
+            total_area += s_prev * (budget - p_prev)
+
+        return float(total_area / budget)
 
     def calculate_pareto_reward(self, pareto_auc: float, parallel_penalty: float) -> float:
         return float(pareto_auc - (self.lambda_penalty * parallel_penalty))

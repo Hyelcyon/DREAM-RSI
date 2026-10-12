@@ -80,19 +80,54 @@ class JsonFileHistoryStore:
     def get_manifest(self) -> StoreManifest:
         manifest_entries: list[TreeManifestItem] = []
         for tid in self.list_trees():
-            tree = self.get_tree(tid)
-            if tree is not None:
+            target_path = self._resolve_tree_path(tid)
+            if not target_path.exists() or not target_path.is_file():
+                continue
+            try:
+                with open(target_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                if not isinstance(data, dict):
+                    continue
+                nodes_raw = data.get("nodes", {})
+                branches_raw = data.get("branches", {})
+                node_count = len(nodes_raw) if isinstance(nodes_raw, dict) else 0
+                branch_count = len(branches_raw) if isinstance(branches_raw, dict) else 0
+                best_score = 0.0
+                if isinstance(nodes_raw, dict):
+                    for n_data in nodes_raw.values():
+                        if isinstance(n_data, dict):
+                            obs = n_data.get("observation", {})
+                            if isinstance(obs, dict) and obs.get("evaluated", False):
+                                s = float(obs.get("score", 0.0))
+                                if s > best_score:
+                                    best_score = s
+                meta_raw = data.get("metadata", {})
+                metadata = meta_raw if isinstance(meta_raw, dict) else {}
                 manifest_entries.append(
                     TreeManifestItem(
-                        tree_id=tree.tree_id,
-                        root_id=tree.root_id,
-                        node_count=len(tree.nodes),
-                        branch_count=len(tree.branches),
-                        best_score=tree.get_best_score(),
-                        created_at=tree.created_at,
-                        metadata=tree.metadata,
+                        tree_id=str(data.get("tree_id", tid)),
+                        root_id=str(data.get("root_id", "")),
+                        node_count=node_count,
+                        branch_count=branch_count,
+                        best_score=best_score,
+                        created_at=float(data.get("created_at", 0.0)),
+                        metadata=metadata,
                     )
                 )
+            except Exception:
+                tree = self.get_tree(tid)
+                if tree is not None:
+                    manifest_entries.append(
+                        TreeManifestItem(
+                            tree_id=tree.tree_id,
+                            root_id=tree.root_id,
+                            node_count=len(tree.nodes),
+                            branch_count=len(tree.branches),
+                            best_score=tree.get_best_score(),
+                            created_at=tree.created_at,
+                            metadata=tree.metadata,
+                        )
+                    )
         return StoreManifest(
             total_trees=len(manifest_entries),
             base_dir=str(self.base_dir),

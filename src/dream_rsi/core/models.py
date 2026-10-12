@@ -145,19 +145,34 @@ class DiscoveryTree(BaseModel):
         if self.root_id and self.nodes and self.root_id not in self.nodes:
             raise ValueError(f"Root node '{self.root_id}' must exist in nodes.")
 
+        verified: set[str] = set()
         for node_id, node in self.nodes.items():
             if node.is_root:
+                verified.add(node_id)
                 continue
             if node.parent_id not in self.nodes:
                 raise ValueError(f"Parent '{node.parent_id}' of node '{node_id}' does not exist.")
 
-            current = node.parent_id
+            if node_id in verified:
+                continue
+
+            current: str | None = node.parent_id
             seen_ancestors: set[str] = {node_id}
+            path: list[str] = [node_id]
+
             while current is not None:
+                if current in verified:
+                    verified.update(path)
+                    break
                 if current in seen_ancestors:
                     raise ValueError(f"Cycle detected in discovery tree at node '{current}'.")
+                if current not in self.nodes:
+                    raise ValueError(f"Parent '{current}' of node '{path[-1]}' does not exist.")
                 seen_ancestors.add(current)
+                path.append(current)
                 current = self.nodes[current].parent_id
+            else:
+                verified.update(path)
 
     @model_validator(mode="after")
     def _validate_tree_integrity(self) -> DiscoveryTree:

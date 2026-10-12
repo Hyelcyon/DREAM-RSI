@@ -38,14 +38,16 @@ class QuestionAPI:
         self._effective_sequential_rounds: float = 0.0
         self._current_best_score: float = 0.0
         self._trajectory: list[tuple[int, float]] = []
+        self._leaves: set[str] = set()
 
         self.reset()
 
     def reset(self) -> None:
         """Resets the exploration state to the root observation."""
         root_node = self._tree.nodes[self._tree.root_id]
-        self._observed = {self._tree.root_id: root_node.model_copy(deep=True)}
+        self._observed = {self._tree.root_id: root_node}
         self._revealed_node_ids = [self._tree.root_id]
+        self._leaves = {self._tree.root_id}
         self._probes_spent = 0
         self._rounds_spent = 0
         self._effective_sequential_rounds = 0.0
@@ -92,22 +94,13 @@ class QuestionAPI:
         return len(self.get_unrevealed_continuations()) == 0
 
     def observed(self) -> dict[str, TreeNode]:
-        return {nid: node.model_copy(deep=True) for nid, node in self._observed.items()}
+        return dict(self._observed)
 
     def get_leaves_of_observed(self) -> list[str]:
-        all_parents = {
-            node.parent_id
-            for node in self._observed.values()
-            if node.parent_id is not None
-        }
-        return [
-            nid for nid in self._observed.keys()
-            if nid not in all_parents
-        ]
+        return [nid for nid in self._observed.keys() if nid in self._leaves]
 
     def admissible_continuations(self) -> set[str]:
-        leaves = set(self.get_leaves_of_observed())
-        return {self._tree.root_id} | leaves
+        return set(self._leaves) | {self._tree.root_id}
 
     def legal_actions(self) -> list[str]:
         """Returns valid continuations that have unrevealed candidate children."""
@@ -211,9 +204,12 @@ class QuestionAPI:
             if eligible:
                 target_id = eligible[0]
                 claimed_node_ids.add(target_id)
-                revealed_node = self._tree.nodes[target_id].model_copy(deep=True)
+                revealed_node = self._tree.nodes[target_id]
                 self._observed[target_id] = revealed_node
                 self._revealed_node_ids.append(target_id)
+                self._leaves.add(target_id)
+                if revealed_node.parent_id is not None and revealed_node.parent_id != self._tree.root_id:
+                    self._leaves.discard(revealed_node.parent_id)
                 newly_revealed_nodes.append(revealed_node)
 
                 if revealed_node.observation.evaluated:
