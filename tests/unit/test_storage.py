@@ -70,3 +70,22 @@ def test_storage_manifest(tmp_path: Path) -> None:
     assert manifest.total_trees == 1
     assert manifest.trees[0].tree_id == "tree_a"
     assert manifest.trees[0].best_score == 0.5
+
+
+def test_storage_manifest_null_and_corrupt_resilience(tmp_path: Path) -> None:
+    store = JsonFileHistoryStore(base_dir=tmp_path)
+
+    bad_json = tmp_path / "corrupt_tree.json"
+    bad_json.write_text("{not valid json", encoding="utf-8")
+
+    null_fields_json = tmp_path / "null_tree.json"
+    null_fields_json.write_text(
+        '{"tree_id": "null_tree", "root_id": "r", "created_at": null, "nodes": {"r": {"observation": {"evaluated": true, "score": null}}}}',
+        encoding="utf-8",
+    )
+
+    manifest = store.get_manifest()
+    assert manifest.total_trees == 1
+    assert manifest.trees[0].tree_id == "null_tree"
+    assert manifest.trees[0].created_at == 0.0
+    assert manifest.trees[0].best_score == 0.0

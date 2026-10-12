@@ -208,7 +208,7 @@ class QuestionAPI:
                 self._observed[target_id] = revealed_node
                 self._revealed_node_ids.append(target_id)
                 self._leaves.add(target_id)
-                if revealed_node.parent_id is not None and revealed_node.parent_id != self._tree.root_id:
+                if revealed_node.parent_id is not None:
                     self._leaves.discard(revealed_node.parent_id)
                 newly_revealed_nodes.append(revealed_node)
 

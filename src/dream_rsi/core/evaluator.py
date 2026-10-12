@@ -60,10 +60,13 @@ class ReplayEvaluator:
         s_prev = 0.0
 
         for p_curr, s_curr in points:
-            if p_curr > p_prev:
-                total_area += s_prev * (p_curr - p_prev)
-                p_prev = p_curr
+            p_effective = min(p_curr, budget)
+            if p_effective > p_prev:
+                total_area += s_prev * (p_effective - p_prev)
+                p_prev = p_effective
             s_prev = s_curr
+            if p_prev >= budget:
+                break
 
         if p_prev < budget:
             total_area += s_prev * (budget - p_prev)

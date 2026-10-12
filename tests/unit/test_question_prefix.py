@@ -71,11 +71,14 @@ def test_question_api_probe_and_reveal(sample_tree: DiscoveryTree):
 
     admissible = q.admissible_continuations()
     assert admissible == {"root", "b1_n1", "b2_n1"}
+    assert set(q.get_leaves_of_observed()) == {"b1_n1", "b2_n1"}
 
     revealed_2 = q.probe_batch(["b1_n1"])
     assert len(revealed_2) == 1
     assert revealed_2[0].node_id == "b1_n2"
     assert q.observed()["b1_n2"].observation.score == 0.8
+    assert set(q.get_leaves_of_observed()) == {"b2_n1", "b1_n2"}
+    assert q.admissible_continuations() == {"root", "b2_n1", "b1_n2"}
 
 
 def test_question_api_batch_parallelism_limit(sample_tree: DiscoveryTree):
