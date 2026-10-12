@@ -50,10 +50,12 @@ class JsonFileHistoryStore:
         if not target_path.exists() or not target_path.is_file():
             return None
 
-        with open(target_path, "r", encoding="utf-8") as f:
-            data: object = json.load(f)
-
-        return DiscoveryTree.model_validate(data)
+        try:
+            with open(target_path, "r", encoding="utf-8") as f:
+                data: object = json.load(f)
+            return DiscoveryTree.model_validate(data)
+        except (json.JSONDecodeError, ValueError, OSError):
+            return None
 
     def list_trees(self) -> list[str]:
         trees: list[str] = []
@@ -98,11 +100,14 @@ class JsonFileHistoryStore:
                         if isinstance(n_data, dict):
                             obs = n_data.get("observation", {})
                             if isinstance(obs, dict) and obs.get("evaluated", False):
-                                s = float(obs.get("score", 0.0))
+                                s_val = obs.get("score")
+                                s = float(s_val) if isinstance(s_val, (int, float)) else 0.0
                                 if s > best_score:
                                     best_score = s
                 meta_raw = data.get("metadata", {})
                 metadata = meta_raw if isinstance(meta_raw, dict) else {}
+                c_val = data.get("created_at")
+                created_at = float(c_val) if isinstance(c_val, (int, float)) else 0.0
                 manifest_entries.append(
                     TreeManifestItem(
                         tree_id=str(data.get("tree_id", tid)),
@@ -110,7 +115,7 @@ class JsonFileHistoryStore:
                         node_count=node_count,
                         branch_count=branch_count,
                         best_score=best_score,
-                        created_at=float(data.get("created_at", 0.0)),
+                        created_at=created_at,
                         metadata=metadata,
                     )
                 )

@@ -76,3 +76,23 @@ jobs:
 
       - name: Run STDIO MCP verification
         run: uv run python scripts/verify_mcp.py
+
+  benchmark:
+    name: Performance Benchmark Verification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install dependencies
+        run: uv sync
+
+      - name: Run benchmark suite
+        run: uv run python scripts/benchmark_suite.py

@@ -46,3 +46,21 @@ def test_pareto_auc_and_reward():
     penalty = 0.2
     reward = evaluator.calculate_pareto_reward(auc, penalty)
     assert pytest.approx(reward, rel=1e-5) == 0.15
+
+
+def test_pareto_auc_boundary_and_clamping():
+    evaluator = ReplayEvaluator()
+
+    assert evaluator.calculate_pareto_auc([], max_budget=10) == 0.0
+
+    curve_single = [(5, 0.6)]
+    auc_single = evaluator.calculate_pareto_auc(curve_single, max_budget=10)
+    assert pytest.approx(auc_single, rel=1e-5) == 0.3
+
+    curve_overshoot = [(2, 0.4), (8, 0.8), (15, 1.0)]
+    auc_clamped = evaluator.calculate_pareto_auc(curve_overshoot, max_budget=10)
+    assert pytest.approx(auc_clamped, rel=1e-5) == 0.4
+
+    curve_unsorted = [(8, 0.8), (2, 0.4)]
+    auc_unsorted = evaluator.calculate_pareto_auc(curve_unsorted, max_budget=10)
+    assert pytest.approx(auc_unsorted, rel=1e-5) == 0.4

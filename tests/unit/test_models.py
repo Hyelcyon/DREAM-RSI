@@ -67,6 +67,28 @@ def test_tree_cycle_detection():
             nodes={"root": root, "a": node_a, "b": node_b},
         )
 
+    node_self = TreeNode(
+        node_id="self_loop",
+        parent_id="self_loop",
+        observation=Observation(branch=1, attempt=0, score=0.1, evaluated=True),
+    )
+    with pytest.raises(ValueError, match="Cycle detected"):
+        DiscoveryTree(
+            tree_id="self_loop_tree",
+            root_id="root",
+            nodes={"root": root, "self_loop": node_self},
+        )
+
+    node_c1 = TreeNode(node_id="c1", parent_id="c2", observation=Observation(branch=1, attempt=0, score=0.1, evaluated=True))
+    node_c2 = TreeNode(node_id="c2", parent_id="c3", observation=Observation(branch=1, attempt=1, score=0.1, evaluated=True))
+    node_c3 = TreeNode(node_id="c3", parent_id="c1", observation=Observation(branch=1, attempt=2, score=0.1, evaluated=True))
+    with pytest.raises(ValueError, match="Cycle detected"):
+        DiscoveryTree(
+            tree_id="tri_cycle_tree",
+            root_id="root",
+            nodes={"root": root, "c1": node_c1, "c2": node_c2, "c3": node_c3},
+        )
+
 
 def test_tree_missing_parent_validation():
     root = TreeNode(
