@@ -54,3 +54,25 @@ def test_optimal_policy_no_duplicates_in_step_batch() -> None:
             break
         assert len(batch) == len(set(batch))
         question.probe_batch(batch)
+
+
+def test_optimal_policy_incremental_trajectory_indexing() -> None:
+    tree = generate_benchmark_discovery_tree(
+        problem_type="sum_difference",
+        tree_id="t_inc_test",
+        num_branches=3,
+        depth_per_branch=3,
+    )
+    question = QuestionAPI(tree=tree, max_parallelism=3, max_budget=10)
+    policy = OptimalPolicy(config={"beta": 0.5, "worker_cap": 3})
+
+    trajs1 = policy.reconstruct_trajectories(question)
+    assert len(trajs1) == 0
+
+    batch = policy.step(question)
+    question.probe_batch(batch)
+    trajs2 = policy.reconstruct_trajectories(question)
+    assert len(trajs2) > 0
+
+    policy.reset()
+    assert len(policy._trajectories) == 0

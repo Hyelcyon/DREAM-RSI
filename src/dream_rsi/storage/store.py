@@ -29,13 +29,12 @@ class JsonFileHistoryStore:
             raise PermissionError(f"Path traversal detected: {tree_id}")
         return target
 
-    def save_tree(self, tree: DiscoveryTree) -> Path:
+    def save_tree(self, tree: DiscoveryTree, *, indent: int | None = 2) -> Path:
         tree.check_integrity()
         target_path = self._resolve_tree_path(tree.tree_id)
         temp_path = self.base_dir / f".tmp_{uuid.uuid4().hex}.json"
 
-        data = tree.model_dump(mode="json")
-        encoded = json.dumps(data, indent=2, ensure_ascii=False)
+        encoded = tree.model_dump_json(indent=indent)
 
         with open(temp_path, "w", encoding="utf-8") as f:
             f.write(encoded)

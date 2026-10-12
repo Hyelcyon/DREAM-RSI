@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import time
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, PrivateAttr, model_validator
 
 JsonScalar = str | int | float | bool | None
 JsonPrimitiveDict = dict[str, str | int | float | bool]
@@ -141,6 +141,20 @@ class DiscoveryTree(BaseModel):
     created_at: float = Field(default_factory=time.time)
     metadata: JsonPrimitiveDict = Field(default_factory=_default_metadata)
 
+    _leaf_ids: dict[str, None] = PrivateAttr(default_factory=dict)
+    _cached_leaves: list[TreeNode] | None = PrivateAttr(default=None)
+    _cached_admissible: set[str] | None = PrivateAttr(default=None)
+
+    def _rebuild_leaf_cache(self) -> None:
+        all_parent_ids = {node.parent_id for node in self.nodes.values() if node.parent_id is not None}
+        self._leaf_ids = {node_id: None for node_id in self.nodes if node_id not in all_parent_ids}
+        self._cached_leaves = None
+        self._cached_admissible = None
+
+    def _ensure_leaf_cache(self) -> None:
+        if not hasattr(self, "_leaf_ids") or self._leaf_ids is None:
+            self._rebuild_leaf_cache()
+
     def check_integrity(self) -> None:
         if self.root_id and self.nodes and self.root_id not in self.nodes:
             raise ValueError(f"Root node '{self.root_id}' must exist in nodes.")
@@ -174,6 +188,8 @@ class DiscoveryTree(BaseModel):
             else:
                 verified.update(path)
 
+        self._rebuild_leaf_cache()
+
     @model_validator(mode="after")
     def _validate_tree_integrity(self) -> DiscoveryTree:
         self.check_integrity()
@@ -183,19 +199,34 @@ class DiscoveryTree(BaseModel):
         if not node.is_root and node.parent_id not in self.nodes:
             raise ValueError(f"Parent '{node.parent_id}' must exist in tree before adding child.")
 
+        is_new_node = node.node_id not in self.nodes
         self.nodes[node.node_id] = node
         if node.branch_id not in self.branches:
             self.branches[node.branch_id] = []
         if node.node_id not in self.branches[node.branch_id]:
             self.branches[node.branch_id].append(node.node_id)
 
+        self._ensure_leaf_cache()
+        if is_new_node:
+            self._leaf_ids[node.node_id] = None
+            if node.parent_id is not None:
+                self._leaf_ids.pop(node.parent_id, None)
+            self._cached_leaves = None
+            self._cached_admissible = None
+        else:
+            self._rebuild_leaf_cache()
+
     def get_leaves(self) -> list[TreeNode]:
-        all_parent_ids = {node.parent_id for node in self.nodes.values() if node.parent_id is not None}
-        return [node for node_id, node in self.nodes.items() if node_id not in all_parent_ids]
+        if self._cached_leaves is None:
+            self._ensure_leaf_cache()
+            self._cached_leaves = [self.nodes[nid] for nid in self._leaf_ids if nid in self.nodes]
+        return list(self._cached_leaves)
 
     def get_admissible_continuations(self) -> set[str]:
-        leaves = {node.node_id for node in self.get_leaves()}
-        return {self.root_id} | leaves
+        if self._cached_admissible is None:
+            self._ensure_leaf_cache()
+            self._cached_admissible = {self.root_id} | set(self._leaf_ids.keys())
+        return set(self._cached_admissible)
 
     def get_branch_history(self, branch_id: int) -> list[TreeNode]:
         node_ids = self.branches.get(branch_id, [])

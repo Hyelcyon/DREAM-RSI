@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import bisect
 import math
 from typing import Any
 
@@ -21,6 +22,16 @@ class OptimalPolicy:
         self.beta: float = min(1.0, max(0.0, float(self.config.get("beta", 0.6))))
         self.worker_cap: int = max(1, int(self.config.get("worker_cap", 10)))
         self.schedule: dict[str, float] = self._schedule(self.beta)
+        self._cached_question_id: int | None = None
+        self._cached_observed_ids: set[str] = set()
+        self._branch_nodes: dict[int, list[TreeNode]] = {}
+        self._trajectories: dict[int, BranchTrajectory] = {}
+
+    def reset(self) -> None:
+        self._cached_question_id = None
+        self._cached_observed_ids.clear()
+        self._branch_nodes.clear()
+        self._trajectories.clear()
 
     def _schedule(self, beta: float) -> dict[str, float]:
         """Routes behavioral parameters through single beta scalar."""
@@ -40,23 +51,46 @@ class OptimalPolicy:
         """Reconstructs ordered prefix trajectories for each branch observed so far."""
         if observed is None:
             observed = question.observed()
-        branches: dict[int, list[TreeNode]] = {}
-        for node in observed.values():
+
+        q_id = id(question)
+        if (
+            self._cached_question_id != q_id
+            or not self._cached_observed_ids.issubset(observed.keys())
+        ):
+            self._cached_question_id = q_id
+            self._cached_observed_ids = set()
+            self._branch_nodes = {}
+            self._trajectories = {}
+
+        if len(self._cached_observed_ids) == len(observed):
+            return dict(self._trajectories)
+
+        for nid, node in observed.items():
+            if nid in self._cached_observed_ids:
+                continue
+            self._cached_observed_ids.add(nid)
             if node.is_root:
                 continue
+
             b_id = node.branch_id
-            if b_id not in branches:
-                branches[b_id] = []
-            branches[b_id].append(node)
+            if b_id not in self._branch_nodes:
+                self._branch_nodes[b_id] = [node]
+                self._trajectories[b_id] = BranchTrajectory.from_nodes(b_id, [node])
+            else:
+                b_nodes = self._branch_nodes[b_id]
+                if not b_nodes or node.depth >= b_nodes[-1].depth:
+                    b_nodes.append(node)
+                    traj = self._trajectories.get(b_id)
+                    if traj is not None:
+                        traj.add_node(node)
+                    else:
+                        self._trajectories[b_id] = BranchTrajectory.from_nodes(b_id, b_nodes)
+                else:
+                    idx = bisect.bisect_right(b_nodes, node.depth, key=lambda n: n.depth)
+                    b_nodes.insert(idx, node)
+                    self._trajectories[b_id] = BranchTrajectory.from_nodes(b_id, b_nodes)
 
-        for b_nodes in branches.values():
-            b_nodes.sort(key=lambda n: n.depth)
-
-        trajectories: dict[int, BranchTrajectory] = {}
-        for b_id, b_nodes in branches.items():
-            trajectories[b_id] = BranchTrajectory.from_nodes(b_id, b_nodes)
-
-        return trajectories
+        return dict(self._trajectories)
 
     def step(self, question: QuestionAPI) -> list[str]:
         """Builds one dynamic portfolio batch up to max_parallelism."""
@@ -183,6 +217,7 @@ class OptimalPolicy:
 
     def solve(self, question: QuestionAPI, budget: int | None = None) -> list[TreeNode]:
         """Executes full exploration rollout over question environment."""
+        self.reset()
         question.reset()
         revealed: list[TreeNode] = []
         while not question.is_exhausted():
